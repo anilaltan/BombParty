@@ -89,6 +89,10 @@ Open the URL shown by Vite (e.g. http://localhost:5173).
 | Frontend | `npm run dev` | Vite dev server |
 | Frontend | `npm run build` | Production build |
 
+## Cursor / MCP
+
+If you use Cursor with MCP, copy `.cursor/mcp.example.json` to `.cursor/mcp.json` and fill in your API keys. `mcp.json` is gitignored.
+
 ## License
 
 MIT.
