@@ -2,15 +2,17 @@
 FROM node:18-alpine as build
 WORKDIR /app
 
-# 1. Dosyaları kopyala (package.json VE diğer her şey)
+# KRİTİK AYAR: Ortamı 'development' yapıyoruz ki typescript ve vite yüklensin
+ENV NODE_ENV=development
+
 COPY package*.json ./
+
+# 'npm ci' yerine 'npm install' kullanıyoruz (daha esnektir)
+RUN npm install
+
 COPY . .
 
-# 2. ŞİMDİ yükleme yap (Garanti Yöntem: Üzerine yazma riskini yok eder)
-# 'npm ci' kullanıyoruz çünkü daha temiz ve güvenilir bir kurulum yapar
-RUN npm ci
-
-# 3. Derle
+# Artık tsc komutu bulunacak
 RUN npm run build
 
 # --- Sunum Katmanı ---
