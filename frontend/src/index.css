@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* --- Task 9.1: Invalid word feedback --- */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes flashRed {
+  0% { background-color: rgba(185, 28, 28, 0.25); }
+  100% { background-color: transparent; }
+}
+
+.shake-on-invalid {
+  animation: shake 0.45s ease-in-out;
+}
+
+.flash-red-on-invalid {
+  animation: flashRed 0.5s ease-out;
+}
+
+/* --- Task 9.2: Valid word feedback --- */
+@keyframes flashGreen {
+  0% { background-color: rgba(16, 185, 129, 0.3); }
+  100% { background-color: transparent; }
+}
+
+.flash-green-on-valid {
+  animation: flashGreen 0.5s ease-out;
+}
+
+/* --- Task 9.4: Mobile viewport and safe area --- */
+.game-screen {
+  min-height: 100dvh;
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake-on-invalid {
+    animation: none;
+  }
+}

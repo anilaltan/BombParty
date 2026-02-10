@@ -1,0 +1,191 @@
+import { useState } from 'react';
+import { useSocket } from '../context/SocketContext';
+import { EVENTS } from '../lib/socket';
+import { AVATAR_OPTIONS, getAvatarEmoji } from '../lib/avatars';
+import type { Player } from '../types/game';
+
+export function Lobby() {
+  const { socket, connected, roomId, players, gameState, lastError, clearLastError } = useSocket();
+  const [nickname, setNickname] = useState('');
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('1');
+  const [roomCode, setRoomCode] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const me = players.find((p) => p.socketId === socket?.id);
+  const isReady = me?.ready ?? false;
+  const isHost = me?.isHost ?? false;
+  const canStart =
+    isHost &&
+    players.length >= 2 &&
+    players.every((p) => p.ready) &&
+    gameState?.status === 'waiting';
+
+  const handleCreateRoom = () => {
+    setActionError(null);
+    clearLastError();
+    const name = nickname.trim();
+    if (!name) {
+      setActionError('Please enter a nickname');
+      return;
+    }
+    if (!socket) {
+      setActionError('Not connected');
+      return;
+    }
+    setCreating(true);
+    const timeout = setTimeout(() => {
+      setCreating(false);
+      setActionError('Server did not respond. Is the backend running?');
+    }, 8000);
+    socket.emit(EVENTS.CREATE_ROOM, { nickname: name, avatarId: selectedAvatarId }, (res: { ok?: boolean; error?: string }) => {
+      clearTimeout(timeout);
+      setCreating(false);
+      if (res && !res.ok) setActionError(res.error ?? 'Failed to create room');
+    });
+  };
+
+  const handleJoinRoom = () => {
+    const code = roomCode.trim().toUpperCase();
+    if (!code) {
+      setActionError('Enter room code');
+      return;
+    }
+    const name = nickname.trim();
+    if (!name) {
+      setActionError('Please enter a nickname');
+      return;
+    }
+    setActionError(null);
+    clearLastError();
+    socket?.emit(EVENTS.JOIN_ROOM, { roomId: code, nickname: name, avatarId: selectedAvatarId }, (res: { ok?: boolean; error?: string }) => {
+      if (res && !res.ok) setActionError(res.error ?? 'Failed to join room');
+    });
+  };
+
+  const handleSetReady = (value: boolean) => {
+    setActionError(null);
+    socket?.emit(EVENTS.SET_READY, { ready: value }, (res: { ok?: boolean; error?: string }) => {
+      if (res?.error) setActionError(res.error);
+    });
+  };
+
+  const handleStartGame = () => {
+    setActionError(null);
+    socket?.emit(EVENTS.START_GAME, {}, (res: { ok?: boolean; error?: string }) => {
+      if (res && !res.ok) setActionError(res.error ?? 'Failed to start');
+    });
+  };
+
+  const err = actionError ?? lastError;
+
+  if (!connected) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
+        <p className="text-amber-400">Connecting to server...</p>
+      </div>
+    );
+  }
+
+  if (!roomId) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-4">
+        <h1 className="text-3xl font-bold">Word Bomb</h1>
+        <input
+          type="text"
+          placeholder="Nickname"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          className="px-3 py-2 rounded bg-gray-800 border border-gray-600 text-white w-64"
+        />
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-gray-400 text-sm">Avatar</span>
+          <div className="flex gap-2 flex-wrap justify-center max-w-[16rem]">
+            {AVATAR_OPTIONS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setSelectedAvatarId(a.id)}
+                className={`w-10 h-10 rounded-full text-xl flex items-center justify-center border-2 transition ${
+                  selectedAvatarId === a.id ? 'border-emerald-500 bg-gray-700' : 'border-gray-600 hover:border-gray-500'
+                }`}
+                title={a.id}
+              >
+                {a.emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 items-center">
+          <button
+            type="button"
+            onClick={handleCreateRoom}
+            disabled={creating}
+            className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {creating ? 'Creating…' : 'Create Room'}
+          </button>
+        </div>
+        <p className="text-gray-400 text-sm">Join or rejoin with room code</p>
+        <div className="flex gap-2 items-center">
+          <input
+            type="text"
+            placeholder="Room code"
+            value={roomCode}
+            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+            maxLength={6}
+            className="px-3 py-2 rounded bg-gray-800 border border-gray-600 text-white w-32 uppercase"
+          />
+          <button
+            type="button"
+            onClick={handleJoinRoom}
+            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500"
+          >
+            Join
+          </button>
+        </div>
+        {err && <p className="text-red-400 text-sm">{err}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-4">
+      <h1 className="text-2xl font-bold">Room {roomId}</h1>
+      <p className="text-gray-400 text-sm">Share this code to invite others.</p>
+      <ul className="list-none space-y-1 w-64">
+        {players.map((p: Player) => (
+          <li key={p.socketId} className="flex justify-between items-center py-1 border-b border-gray-700 gap-2">
+            <span className="flex items-center gap-2">
+              <span className="text-lg">{getAvatarEmoji(p.avatarId)}</span>
+              {p.nickname || p.socketId.slice(0, 6)}
+            </span>
+            <span className="text-sm text-gray-400">
+              {p.isHost && 'Host'}
+              {p.ready && ' · Ready'}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={isReady}
+          onChange={(e) => handleSetReady(e.target.checked)}
+          className="rounded"
+        />
+        Ready
+      </label>
+      {isHost && (
+        <button
+          onClick={handleStartGame}
+          disabled={!canStart}
+          className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Start Game
+        </button>
+      )}
+      {err && <p className="text-red-400 text-sm">{err}</p>}
+    </div>
+  );
+}

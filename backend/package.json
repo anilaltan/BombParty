@@ -1,0 +1,22 @@
+{
+  "name": "bombparty-backend",
+  "version": "0.1.0",
+  "description": "Word Bomb game server",
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "build-dictionary": "node src/dictionary/build.js",
+    "fetch-kelimetre": "node scripts/fetch-kelimetre.js",
+    "sozluk-olustur": "node scripts/kelime-botu.js",
+    "test": "node --test",
+    "test:socket": "node src/test-socket-client.js"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.0"
+  }
+}

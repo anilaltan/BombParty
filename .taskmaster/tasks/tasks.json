@@ -1,0 +1,715 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Prepare and Validate Turkish Dictionary Dataset",
+        "description": "Clean, process, and validate the TDK Turkish dictionary dataset to ensure it's suitable for game use, including Turkish character support.",
+        "details": "Load the TDK dataset. Implement logic to filter out non-Turkish words or entries not suitable for the game. Ensure all Turkish characters (İ, Ş, Ğ, etc.) are correctly handled. This dataset will be RAM-loaded on the server.",
+        "testStrategy": "Verify dataset integrity by checking for common Turkish words and characters. Perform sample lookups to ensure accuracy. Count total valid words.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Load and Parse TDK Dictionary",
+            "description": "Load the TDK Turkish dictionary dataset from its source and parse it into a usable format.",
+            "dependencies": [],
+            "details": "Read the TDK dictionary file (e.g., from a provided path or URL). Implement robust parsing logic to handle potential formatting inconsistencies and extract individual words or entries.\n<info added on 2026-02-10T13:29:27.062Z>\nImplemented: backend/src/dictionary/loader.js with loadFromFile, loadFromUrl, parseDictionaryJson (supports string[], {word}[], {kelime}[], object keys). Added loader.test.js; all 6 tests pass. Sample data at backend/data/sample-dictionary.json.\n</info added on 2026-02-10T13:29:27.062Z>",
+            "status": "done",
+            "testStrategy": "Verify that the file is read correctly and that the parsed data structure contains an expected number of entries. Check for common parsing errors.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:29:24.000Z"
+          },
+          {
+            "id": 2,
+            "title": "Filter and Sanitize Dictionary Entries",
+            "description": "Clean the loaded dictionary by removing non-Turkish words and ensuring proper Turkish character encoding.",
+            "dependencies": [
+              1
+            ],
+            "details": "Iterate through the parsed dictionary. Implement checks to identify and remove entries that are not valid Turkish words (e.g., proper nouns, foreign words, abbreviations). Ensure all Turkish-specific characters (like İ, Ğ, Ş, Ö, Ü, Ç) are correctly represented and handled.\n<info added on 2026-02-10T13:30:24.707Z>\nImplemented filter.js with normalizeTurkishLower, isTurkishAlpha, and filterAndSanitize functions. The filterAndSanitize function enforces word length (2-30 characters), disallows dots, and removes duplicates. filter.test.js passes, confirming the filtering logic.\n</info added on 2026-02-10T13:30:24.707Z>",
+            "status": "done",
+            "testStrategy": "Perform spot checks on filtered entries to ensure non-Turkish words are removed. Verify that words with Turkish characters are preserved and displayed correctly. Count the number of valid entries after filtering.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:30:18.502Z"
+          },
+          {
+            "id": 3,
+            "title": "Optimize Dictionary for RAM Loading",
+            "description": "Prepare the validated Turkish dictionary for efficient loading into server RAM.",
+            "dependencies": [
+              2
+            ],
+            "details": "Convert the cleaned dictionary into a memory-efficient data structure suitable for fast lookups. This might involve using a Set, a Trie, or a similar structure. Ensure the final format minimizes memory footprint while maintaining performance.\n<info added on 2026-02-10T13:32:01.098Z>\nThe optimized format will be a JSON array of strings. A build script (build.js) will generate this from the source data. The server will load this JSON array and convert it into a JavaScript Set for O(1) lookups. The `buildFromSource()` function in `index.js` will handle this process.\n</info added on 2026-02-10T13:32:01.098Z>",
+            "status": "done",
+            "testStrategy": "Measure the memory usage of the final data structure. Perform benchmark tests for word lookups to ensure performance meets requirements for real-time game use.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:31:59.026Z"
+          },
+          {
+            "id": 4,
+            "title": "Implement Server-Side Dictionary Loading",
+            "description": "Develop the server-side logic to load the prepared dictionary into memory upon application startup.",
+            "dependencies": [
+              3
+            ],
+            "details": "Write the code that executes when the server starts. This code should load the optimized dictionary data structure into a global or accessible variable in the server's memory.\n<info added on 2026-02-10T13:32:02.221Z>\nThe `loadDictionary()` function in `dictionary/index.js` should be called at server startup in `backend/src/index.js`. The `wordSet` will be held in the module and used for `has(word)` lookups.\n</info added on 2026-02-10T13:32:02.221Z>",
+            "status": "done",
+            "testStrategy": "Verify that the dictionary is loaded successfully when the server starts. Check that the loaded data structure is accessible and contains the expected number of entries.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:31:59.029Z"
+          },
+          {
+            "id": 5,
+            "title": "Validate Dictionary Integrity and Character Support",
+            "description": "Perform final validation checks on the loaded dictionary, focusing on Turkish character support and data integrity.",
+            "dependencies": [
+              4
+            ],
+            "details": "After loading, run a series of checks to confirm the dictionary's integrity. This includes verifying the presence of a diverse set of Turkish words and ensuring that all Turkish characters are correctly handled in lookups and operations.\n<info added on 2026-02-10T13:32:03.344Z>\nvalidate.js runs integrity checks: load count, has() for Turkish sample words (ş,ç,ğ,ı,ö,ü). node src/dictionary/validate.js passes.\n</info added on 2026-02-10T13:32:03.344Z>",
+            "status": "done",
+            "testStrategy": "Test lookups for words containing all Turkish specific characters. Perform random word lookups and verify their existence. Check for any anomalies or errors reported during the loading and validation process.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:31:59.033Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T13:31:59.033Z"
+      },
+      {
+        "id": "2",
+        "title": "Develop Syllable Generation Engine",
+        "description": "Create an algorithm to generate valid, playable syllables based on the processed Turkish dictionary.",
+        "details": "Analyze the dictionary to identify syllables (2-3 letters) that appear in at least 50 valid words. Store these valid syllables in a data structure for quick retrieval. Implement a function to randomly select a syllable from this pre-computed pool.",
+        "testStrategy": "Test the syllable generator with various dictionary inputs. Verify that generated syllables meet the minimum word count criteria. Ensure random selection is unbiased.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Analyze Dictionary for Syllable Frequency",
+            "description": "Process the Turkish dictionary to identify and count occurrences of 2-3 letter syllables.",
+            "dependencies": [],
+            "details": "Iterate through each word in the processed Turkish dictionary. For each word, extract all possible 2-letter and 3-letter substrings. Maintain a frequency map for each unique syllable encountered. This step is crucial for filtering syllables that appear in at least 50 words.",
+            "status": "done",
+            "testStrategy": "Unit tests to verify syllable extraction from sample words. Integration tests to confirm frequency counting accuracy against a small, known dictionary subset.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:46:10.072Z"
+          },
+          {
+            "id": 2,
+            "title": "Filter and Store Valid Syllables",
+            "description": "Filter syllables based on the minimum word count and store them efficiently.",
+            "dependencies": [
+              1
+            ],
+            "details": "After analyzing the dictionary and populating the syllable frequency map, iterate through the map. Select only those syllables whose frequency count is 50 or greater. Store these validated syllables in a data structure optimized for random access, such as an array or a hash set.\n<info added on 2026-02-10T13:46:02.613Z>\nImplemented `getValidSyllables(freqMap, minWordCount)` which filters syllables with count >= 50 (configurable). Valid syllables are stored in a module-level array for O(1) random access. `initSyllablePool(wordList, minWordCount)` builds the pool at startup. Tests verify threshold filtering.\n</info added on 2026-02-10T13:46:02.613Z>",
+            "status": "done",
+            "testStrategy": "Test with a frequency map containing syllables above and below the threshold. Verify that only syllables meeting the criteria are stored. Check for correct data structure population.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:46:10.079Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement Random Syllable Selection Function",
+            "description": "Create a function to randomly select a syllable from the pre-computed pool.",
+            "dependencies": [
+              2
+            ],
+            "details": "Develop a function that takes the data structure containing valid syllables as input. Implement logic to randomly pick one syllable from this collection. Ensure the selection process is unbiased and that each valid syllable has an equal probability of being chosen.\n<info added on 2026-02-10T13:46:05.525Z>\nImplemented getRandomSyllable() using crypto.randomInt for unbiased selection from the pool. Added error handling for an empty pool. Exported from dictionary/index.js. Tests verify return value and empty-pool error.\n</info added on 2026-02-10T13:46:05.525Z>",
+            "status": "done",
+            "testStrategy": "Call the function multiple times and analyze the distribution of selected syllables to ensure randomness. Test with an empty pool to verify error handling.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:46:10.087Z"
+          },
+          {
+            "id": 4,
+            "title": "Integrate Syllable Generation into Game Logic",
+            "description": "Connect the syllable generation engine to the core game loop.",
+            "dependencies": [
+              3,
+              5
+            ],
+            "details": "Modify the core game loop logic (Task 5) to call the random syllable selection function at the appropriate time, likely at the beginning of each player's turn or round. Ensure the generated syllable is correctly passed to the game state for display and validation.",
+            "status": "pending",
+            "testStrategy": "End-to-end testing of the game loop. Verify that a new, valid syllable is generated and assigned at the start of each turn as expected by the game flow.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-10T13:46:14.772Z"
+      },
+      {
+        "id": "3",
+        "title": "Setup Node.js Backend and Socket.io Server",
+        "description": "Initialize the Node.js backend project and integrate Socket.io for real-time communication.",
+        "details": "Set up a new Node.js project. Install Socket.io. Configure the server to listen for WebSocket connections. Implement basic connection/disconnection event handlers.",
+        "testStrategy": "Verify that clients can connect to the server using Socket.io. Test basic message sending and receiving between client and server.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Node.js Project and Install Dependencies",
+            "description": "Set up a new Node.js project directory and install necessary packages like Express and Socket.io.",
+            "dependencies": [],
+            "details": "Create a new directory for the backend. Run 'npm init -y' to create a package.json file. Install 'express' and 'socket.io' using npm. Set up a basic Express server structure.\n<info added on 2026-02-10T13:37:52.913Z>\nAdded express and socket.io to package.json; ran npm install. Backend already had ES module structure.\n</info added on 2026-02-10T13:37:52.913Z>",
+            "status": "done",
+            "testStrategy": "Verify that 'npm install' completes without errors and that 'package.json' lists express and socket.io as dependencies.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:36:18.882Z"
+          },
+          {
+            "id": 2,
+            "title": "Configure Socket.io Server",
+            "description": "Integrate Socket.io with the Express server and configure it to listen for incoming connections.",
+            "dependencies": [
+              1
+            ],
+            "details": "Import Socket.io and attach it to the HTTP server created by Express. Configure Socket.io to enable CORS if necessary for frontend communication. Set up the server to listen on a specific port.\n<info added on 2026-02-10T13:37:54.212Z>\nindex.js creates Express app, createServer(app), new Server(httpServer, { cors: { origin, credentials } }), attachSocketHandlers(io). loadDictionary() then httpServer.listen(PORT). PORT from env or 3001.\n</info added on 2026-02-10T13:37:54.212Z>",
+            "status": "done",
+            "testStrategy": "Start the server and attempt to connect a basic Socket.io client. Verify that the connection is established successfully.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:37:49.350Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement Basic Connection/Disconnection Handlers",
+            "description": "Add event listeners for 'connection' and 'disconnect' events to manage client connections.",
+            "dependencies": [
+              2
+            ],
+            "details": "Write event handler functions for 'connection' to log new clients and 'disconnect' to log clients leaving. Assign unique IDs to connected clients if needed for future management.\n<info added on 2026-02-10T13:37:55.717Z>\nCompleted: socketManager.js io.on('connection', (socket) => { console.log('Client connected:', socket.id); socket.on('disconnect', (reason) => { console.log('Client disconnected:', socket.id, 'Reason:', reason); }); });\n</info added on 2026-02-10T13:37:55.717Z>",
+            "status": "done",
+            "testStrategy": "Connect multiple clients and observe server logs to confirm connection and disconnection events are accurately registered.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:37:49.354Z"
+          },
+          {
+            "id": 4,
+            "title": "Set up Basic Message Handling",
+            "description": "Implement a basic mechanism for the server to receive and acknowledge messages from clients.",
+            "dependencies": [
+              3
+            ],
+            "details": "Define a custom event (e.g., 'chat message') that clients can send. Implement a server-side listener for this event. Send an acknowledgment or a simple response back to the client upon receiving the message.",
+            "status": "done",
+            "testStrategy": "Send a test message from a client to the server and verify that the server receives it and sends back the expected response.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:37:49.357Z"
+          },
+          {
+            "id": 5,
+            "title": "Structure Server Code for Scalability",
+            "description": "Organize the server code into modules for better maintainability and future expansion.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create separate files for different functionalities (e.g., 'socketManager.js', 'gameLogic.js'). Refactor the initial setup code into these modules. Ensure the main server file imports and utilizes these modules correctly.\n<info added on 2026-02-10T13:38:01.395Z>\nSocket event handlers are now attached in `src/socketManager.js` using `attachSocketHandlers(io)`. The `index.js` file has been refactored to be concise, focusing on loading the dictionary, creating the server, attaching handlers, and initiating the listening process.\n</info added on 2026-02-10T13:38:01.395Z>",
+            "status": "done",
+            "testStrategy": "Review the code structure for modularity and adherence to common Node.js patterns. Ensure all functionalities from previous steps still work after refactoring.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T13:37:49.362Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T13:37:49.362Z"
+      },
+      {
+        "id": "4",
+        "title": "Implement Lobby and Room Management",
+        "description": "Develop functionality for creating and joining game rooms using Socket.io's room features.",
+        "details": "Implement 'createRoom' and 'joinRoom' functionalities. Use Socket.io rooms to isolate game states. Manage player lists within each room. Implement a 'ready' status for players in the waiting room.",
+        "testStrategy": "Test creating multiple rooms. Verify that players in different rooms cannot see each other's game states. Test joining and leaving rooms. Ensure 'ready' status updates correctly.",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up Socket.io server for rooms",
+            "description": "Initialize Socket.io and configure it to handle room creation and management.",
+            "dependencies": [],
+            "details": "Install Socket.io if not already present. Set up the main server file to include Socket.io initialization. Define basic event handlers for connection and disconnection.",
+            "status": "done",
+            "testStrategy": "Verify Socket.io connection is established. Check server logs for successful initialization.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:00:26.309Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement 'createRoom' Socket.io event",
+            "description": "Develop the server-side logic for creating a new game room.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a Socket.io event listener for 'createRoom'. When triggered, generate a unique room ID, add the requesting player to this new room using Socket.io's join method, and store room details (e.g., room ID, host player).",
+            "status": "done",
+            "testStrategy": "Test creating a room and verify the player is added to the correct Socket.io room. Check that a unique room ID is generated and returned to the client.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:00:26.316Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement 'joinRoom' Socket.io event",
+            "description": "Develop the server-side logic for players joining an existing game room.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create a Socket.io event listener for 'joinRoom'. When triggered, validate the provided room ID. If valid, add the player to the specified room using Socket.io's join method and update the player list for that room.",
+            "status": "done",
+            "testStrategy": "Test joining an existing room with a valid ID. Verify the player is added to the correct Socket.io room and appears in the room's player list. Test joining a non-existent room.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:00:26.322Z"
+          },
+          {
+            "id": 4,
+            "title": "Manage player lists within rooms",
+            "description": "Maintain an accurate list of players currently in each game room.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "On player connection and disconnection, update the player list associated with their current room. Emit an event to all players in the room to reflect the updated player list.",
+            "status": "done",
+            "testStrategy": "Verify player lists are updated correctly when players join or leave. Ensure all players in a room receive the updated list.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:00:26.327Z"
+          },
+          {
+            "id": 5,
+            "title": "Implement 'ready' status for players",
+            "description": "Add and manage a 'ready' status for players in the waiting room.",
+            "dependencies": [
+              4
+            ],
+            "details": "Introduce a 'ready' flag for each player object. Implement Socket.io events for players to toggle their 'ready' status. Broadcast the updated status to all players in the room.",
+            "status": "done",
+            "testStrategy": "Test toggling the 'ready' status. Verify the status change is reflected for all players in the room. Ensure the initial status is 'not ready'.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:00:26.333Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:00:26.333Z"
+      },
+      {
+        "id": "5",
+        "title": "Develop Core Game Loop Logic",
+        "description": "Implement the fundamental game loop including turn management, health system, and player elimination.",
+        "details": "Define player turns. Implement a system for tracking player lives. Add logic for eliminating players when lives reach zero. Integrate the syllable generation to assign a syllable at the start of each turn.",
+        "testStrategy": "Simulate game progression with multiple players. Verify correct turn order. Test player elimination logic when lives are depleted. Ensure syllables are assigned correctly at the start of each turn.",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Extend room and player model for game state",
+            "description": "Add status (waiting/playing), lives, score, turn index, currentSyllable, usedWords to room and player structures per PRD.",
+            "details": "In socketManager: extend room to include status ('waiting' | 'playing'), currentSyllable (string), usedWords (string[]), currentTurnIndex (number). Extend each player to include lives (number), score (number), isEliminated (boolean). Keep backward compatibility with existing createRoom/joinRoom/setReady.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:07:52.064Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement startGame and turn management",
+            "description": "Add startGame event when all players ready; assign first turn and emit game state.",
+            "details": "New event: startGame (host only). When all in room have ready=true, set room.status='playing', set lives (e.g. 3) and score for each player, set currentTurnIndex=0, call getRandomSyllable() and set currentSyllable, clear usedWords. Broadcast gameState (or gameStarted) with syllable, turn player, player list with lives/scores.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:09:25.074Z"
+          },
+          {
+            "id": 3,
+            "title": "Word submission and validation in game",
+            "description": "Handle submitWord: validate syllable + dictionary + usedWords; update turn and usedWords on success.",
+            "details": "New event: submitWord { word }. Check room is playing, socket is current turn player. Validate: word contains currentSyllable (case-insensitive Turkish), dictionary.has(word), word not in usedWords. On success: push word to usedWords, add to player score, advance turn (next non-eliminated player), assign new syllable via getRandomSyllable(), broadcast updated state. On failure: emit validation error to client.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:10:31.266Z"
+          },
+          {
+            "id": 4,
+            "title": "Bomb/timeout: decrement life and eliminate players",
+            "description": "When time runs out for current player, decrement lives; if 0 mark eliminated and skip in turn order.",
+            "details": "New event: bombExploded (from client or server timer). Current turn player loses one life. If lives === 0, set isEliminated=true. Advance turn to next non-eliminated player; if only one (or zero) left, emit gameEnd with winner/final scores. Assign new syllable for next player, broadcast updated state.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:10:54.001Z"
+          },
+          {
+            "id": 5,
+            "title": "Integrate syllable at turn start and wire events",
+            "description": "Ensure getRandomSyllable() is called at start of each turn; export game events and document flow.",
+            "details": "Centralize \"start of turn\" logic: set currentSyllable = getRandomSyllable(), clear or keep usedWords per PRD (usedWords per round). Emit to room: turnUpdate { currentSyllable, currentPlayerId, usedWords?, players }. Ensure dictionary.validate or has() uses existing dictionary module. Add EVENTS for game: startGame, submitWord, bombExploded, gameState, gameEnd.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:11:06.205Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:11:06.205Z"
+      },
+      {
+        "id": "6",
+        "title": "Implement Real-Time Word Validation",
+        "description": "Create a server-side service to validate player-submitted words in real-time.",
+        "details": "Implement a validation function that checks: 1) if the input word contains the current syllable (using regex), 2) if the word exists in the loaded dictionary, and 3) if the word has already been used in the current round. Return validation status (valid/invalid) and reason.",
+        "testStrategy": "Test with valid words, invalid words (wrong syllable, not in dictionary, already used), and edge cases. Ensure validation is performed server-side and response is near instantaneous.",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "5"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create validateWord service module",
+            "description": "Implement a single validation function that checks syllable (regex), dictionary, and usedWords; return { valid, reason }.",
+            "details": "New module backend/src/validation/validateWord.js (or under dictionary). Uses normalizeTurkishLower from filter.js, dictionary.has from dictionary/index.js. Accept (word, syllable, usedWords). Return { valid: boolean, reason?: string }. Order: empty word -> syllable containment (regex) -> dictionary lookup -> already used.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:15:22.003Z"
+          },
+          {
+            "id": 2,
+            "title": "Add unit tests for validateWord",
+            "description": "Test valid words, wrong syllable, not in dictionary, already used, and edge cases (empty, Turkish chars).",
+            "details": "Create validateWord.test.js. Mock or use real dictionary for has(). Test cases: valid word with syllable; word without syllable; word not in dictionary; word in usedWords; empty word; Turkish character normalization. Ensure server-side and fast.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:15:22.406Z"
+          },
+          {
+            "id": 3,
+            "title": "Refactor socketManager to use validation service",
+            "description": "Replace inline validation in SUBMIT_WORD with call to validateWord; preserve reply shape (ok, error) and wordResult event.",
+            "details": "In socketManager SUBMIT_WORD: after ensuring room/playing/turn, get word/syllable/usedWords, call validateWord(word, syllable, usedWords). On valid: update usedWords, score, turn, startNextTurn, reply({ ok: true }). On invalid: reply({ ok: false, error: result.reason }). Remove duplicate inline checks.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 6,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:16:09.939Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:16:09.939Z"
+      },
+      {
+        "id": "7",
+        "title": "Implement Bomb and Timer Mechanics",
+        "description": "Develop the server-side timer logic for the bomb and its interaction with word validation.",
+        "details": "Implement a server-side countdown timer. When a valid word is submitted, reset the timer and pass it to the next player. If the timer expires, the current player loses a life. Implement a server-side grace period (e.g., 200ms) for network latency.",
+        "testStrategy": "Test timer countdown and reset. Verify player life deduction upon timer expiration. Test successful word submission resets timer. Validate grace period functionality.",
+        "priority": "high",
+        "dependencies": [
+          "5",
+          "6"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create server-side turn timer module",
+            "description": "Implement a reusable turn timer with start, reset, cancel, and onExpire callback; configurable duration (e.g. from env).",
+            "details": "New module backend/src/timer/turnTimer.js. API: createTurnTimer({ durationMs, onExpire }) returns { start(), reset(), cancel(), getRemainingMs() }. Use setTimeout/setInterval or single setTimeout that schedules next tick; clear on cancel/reset. Export for use in socketManager. Duration from process.env.TURN_DURATION_MS or default (e.g. 15000).",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:22:49.450Z"
+          },
+          {
+            "id": 2,
+            "title": "Integrate timer in socketManager (start, reset, cancel, expiry)",
+            "description": "Wire turn timer to game: start when game starts and on each startNextTurn; cancel/reset on successful submitWord; on expiry run bomb logic and emit BOMB_EXPLODED.",
+            "details": "In socketManager: store per-room timer handle (e.g. room.turnTimer or a Map roomId -> timer). On START_GAME after broadcastGameState, start timer for room. In startNextTurn, cancel any existing timer then start new one; pass onExpire callback that runs same logic as BOMB_EXPLODED handler (decrement current player life, eliminate if 0, gameEnd if one left, else next turn + startNextTurn) and emit BOMB_EXPLODED to room. On SUBMIT_WORD success, cancel current room timer before startNextTurn (which will start new timer). Ensure only one timer per room; clear timer when game ends or room resets.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:26:08.655Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement server-side grace period for late submissions",
+            "description": "Accept submitWord within a short window (e.g. 200ms) after nominal timer expiry; treat as valid and advance turn instead of exploding.",
+            "details": "Timer module: record expiry timestamp when timer fires. In socketManager SUBMIT_WORD: if room timer reports \"already expired\" but within grace (e.g. process.env.GRACE_MS or 200ms), still validate word; if valid, process as success (update usedWords, score, next turn, startNextTurn) and do not run bomb logic. Option: turnTimer.getExpiredAt() and check Date.now() - expiredAt <= GRACE_MS in submitWord path when timer has expired. Ensure grace is server-authoritative and not abusable (single use per turn).",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:26:08.663Z"
+          },
+          {
+            "id": 4,
+            "title": "Add tests for timer and timer integration",
+            "description": "Unit tests for turn timer (start, reset, cancel, onExpire); verify life deduction on expiry and timer reset on valid word in game flow.",
+            "details": "Create backend/src/timer/turnTimer.test.js: test that onExpire is called after duration, that reset cancels and restarts, that cancel clears and does not fire. Optionally integration test with socketManager or a small test that starts timer and simulates submitWord to confirm timer is cleared. Document TURN_DURATION_MS and GRACE_MS in .env.example.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:26:26.627Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:26:26.627Z"
+      },
+      {
+        "id": "8",
+        "title": "Develop React Frontend and Basic UI",
+        "description": "Set up the React.js frontend and integrate with Socket.io to display game state and handle user input.",
+        "details": "Create a React SPA. Integrate Socket.io client. Implement basic UI components for displaying the current syllable, input field, player list, and bomb timer. Handle user input for typing words.",
+        "testStrategy": "Verify that the frontend connects to the backend. Test displaying dynamic game information (syllable, timer, players). Ensure user input is captured and sent to the server.",
+        "priority": "medium",
+        "dependencies": [
+          "3",
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize React SPA with TypeScript and Tailwind",
+            "description": "Create frontend project (Vite + React + TypeScript), add Tailwind CSS, ensure it runs and can call backend (CORS).",
+            "details": "Use Vite + React + TypeScript. Add Tailwind CSS. Configure dev server and proxy or CORS for backend at localhost:3001. Minimal layout: app shell, placeholder page.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:35:34.553Z"
+          },
+          {
+            "id": 2,
+            "title": "Add Socket.io client and event constants",
+            "description": "Install socket.io-client; define event names matching backend EVENTS; connect to backend URL from env.",
+            "details": "Install socket.io-client. Create lib/socket.ts (or .js): export EVENTS object matching backend (createRoom, joinRoom, setReady, roomJoined, playerList, startGame, gameState, submitWord, wordResult, bombExploded, gameEnd, error). Connect to VITE_SOCKET_URL or localhost:3001.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:35:50.798Z"
+          },
+          {
+            "id": 3,
+            "title": "Create socket context and game state hook",
+            "description": "Provide socket instance and room/game state (roomId, players, gameState) via React context or hook.",
+            "details": "SocketProvider: connect on mount, expose socket + connection status. Use EVENTS to listen for roomJoined, playerList, gameState, wordResult, bombExploded, gameEnd, error. Store roomId, players, gameState (currentSyllable, currentPlayerId, status, usedWords) for UI consumption.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:36:41.310Z"
+          },
+          {
+            "id": 4,
+            "title": "Build Lobby UI: create/join room, nickname, ready, start",
+            "description": "Lobby screen: create room or join with code; nickname input; player list; ready toggle; host-only start game button.",
+            "details": "Components: Lobby or LobbyPage. Create room (emit createRoom { nickname }), join room (input room code, emit joinRoom { roomId, nickname }). Display player list from playerList event. Ready checkbox -> setReady. Start Game button (host only, disabled until all ready and >= 2 players). Show room code for sharing.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:38:43.977Z"
+          },
+          {
+            "id": 5,
+            "title": "Build Game UI: syllable, input, player list, bomb timer",
+            "description": "During play: show current syllable, word input, player list with lives/score, and bomb countdown.",
+            "details": "Game screen when status === 'playing': display currentSyllable prominently; text input for word submission (Submit or Enter); list players with lives and score; show timer (client-side countdown synced from gameState or server-driven). Only current player can type; others see syllable and timer.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:38:44.068Z"
+          },
+          {
+            "id": 6,
+            "title": "Wire submitWord, wordResult, gameEnd and timer sync",
+            "description": "On submit: emit submitWord({ word }); handle wordResult (ok/error) and show feedback; handle gameEnd; keep timer in sync with server.",
+            "details": "Submit handler: emit SUBMIT_WORD with { word }, trim input. On WORD_RESULT: show success/error (e.g. toast or inline). On GAME_END: show winner and final scores. Timer: either request remaining from server (if backend exposes it) or start client countdown on each gameState using a fixed TURN_DURATION_MS; reset on new gameState. Ensure no double-submit.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:38:45.060Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:38:45.060Z"
+      },
+      {
+        "id": "9",
+        "title": "Implement Visual and Audio Feedback",
+        "description": "Add UI/UX polish including animations, sound effects, and mobile compatibility adjustments.",
+        "details": "Implement screen shake/red flash for invalid words, green flash and 'ding' sound for valid words. Add bomb ticking sounds that increase in speed. Ensure the UI is responsive and the virtual keyboard does not obscure the game area on mobile devices.",
+        "testStrategy": "Test all feedback mechanisms on various devices and screen sizes. Verify sound effects play correctly. Ensure mobile keyboard behavior is as expected.",
+        "priority": "medium",
+        "dependencies": [
+          "7",
+          "8"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Invalid word feedback: screen shake and red flash",
+            "description": "Trigger screen shake and red flash when server returns invalid word (lastWordResult.ok === false).",
+            "details": "Use CSS animation or state-driven class on a wrapper. Clear feedback after short duration. Hook into existing lastWordResult in Game.tsx.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:46:37.271Z"
+          },
+          {
+            "id": 2,
+            "title": "Valid word feedback: green flash and ding sound",
+            "description": "Trigger green flash and play a ding sound when word is valid (lastWordResult.ok === true).",
+            "details": "CSS flash animation; add a short success sound (e.g. public/sounds/ding.mp3 or use Web Audio). Respect user preference / mute if needed later.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:47:28.774Z"
+          },
+          {
+            "id": 3,
+            "title": "Bomb ticking sounds that increase in speed",
+            "description": "Play tick sounds during countdown; interval decreases as time runs out.",
+            "details": "Use timerSecs in Game.tsx to drive tick interval (e.g. 1s at 15s, 0.5s at 5s, 0.25s at 2s). Single tick sound asset, play via Audio or Howler.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:48:14.623Z"
+          },
+          {
+            "id": 4,
+            "title": "Responsive layout and mobile keyboard",
+            "description": "Ensure game area stays visible when mobile virtual keyboard opens; avoid input obscuring syllable/timer.",
+            "details": "Use safe-area, min-height, scroll behavior (scroll game area into view on focus), and optionally visualViewport or input mode attributes so keyboard doesn't cover critical UI.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:49:04.117Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:49:04.117Z"
+      },
+      {
+        "id": "10",
+        "title": "Implement Username, Avatar, and Profanity Filter",
+        "description": "Add user profile features and a profanity filter for usernames and chat.",
+        "details": "Implement username input and optional avatar selection during entry. Integrate a comprehensive profanity filter (blacklist) for usernames and any in-game chat functionality.",
+        "testStrategy": "Test username entry and avatar selection. Verify the profanity filter correctly blocks or flags inappropriate content in usernames and chat.",
+        "priority": "low",
+        "dependencies": [
+          "8"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Backend: Profanity filter module (blacklist, isProfane)",
+            "description": "Create a shared profanity filter that loads a blacklist and exposes isProfane(text) for Turkish/ASCII.",
+            "details": "Add backend/src/profanity/ with index.js (load blacklist from JSON or inline list), isProfane(text) normalizes and checks substrings. Export for use in socketManager.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:55:35.419Z"
+          },
+          {
+            "id": 2,
+            "title": "Backend: Validate nickname in createRoom/joinRoom",
+            "description": "Use profanity filter in createRoom and joinRoom; return cb({ ok: false, error: '...' }) if nickname is profane or invalid.",
+            "details": "In socketManager CREATE_ROOM and JOIN_ROOM: if nickname provided, call isProfane(nickname); if true, cb({ ok: false, error: 'Nickname not allowed' }). Optionally enforce min/max length.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:55:55.942Z"
+          },
+          {
+            "id": 3,
+            "title": "Backend: Apply profanity filter to in-game chat (message)",
+            "description": "In the message handler, validate payload text with profanity filter; reject or strip before broadcasting.",
+            "details": "socket.on('message'): if payload.text is profane, cb({ ok: false, error: 'Message not allowed' }). Otherwise keep current echo behavior until chat UI is built.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:55:55.945Z"
+          },
+          {
+            "id": 4,
+            "title": "Frontend: Username required + avatar selection",
+            "description": "Make nickname required for entry; add avatar picker (grid or dropdown), send avatarId with createRoom/joinRoom.",
+            "details": "Lobby: require nickname (non-empty, show error if empty on create/join). Add avatar selection (e.g. 6–12 preset avatar IDs). Emit { nickname, avatarId } in CREATE_ROOM and JOIN_ROOM.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:57:36.978Z"
+          },
+          {
+            "id": 5,
+            "title": "Backend: Accept and broadcast avatarId",
+            "description": "Store avatarId on player; include in playerList and gameState payloads.",
+            "details": "GamePlayer type: add avatarId (optional string). createRoom/joinRoom accept payload.avatarId; store on player. broadcastPlayerList and broadcastGameState include avatarId.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:56:27.283Z"
+          },
+          {
+            "id": 6,
+            "title": "Frontend: Display avatars in Lobby and Game",
+            "description": "Show selected avatar next to username in Lobby and Game player lists.",
+            "details": "Player type: add avatarId?: string. Lobby and Game: render avatar (image or emoji/placeholder) next to nickname. Use shared avatar asset list matching backend IDs.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-10T14:57:36.982Z"
+          }
+        ],
+        "updatedAt": "2026-02-10T14:57:36.982Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-02-10T14:57:36.982Z",
+      "taskCount": 10,
+      "completedCount": 10,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

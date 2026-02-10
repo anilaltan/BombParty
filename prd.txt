@@ -1,0 +1,190 @@
+Product Requirements Document (PRD): "Word Bomb" (Project Codename)
+Overview
+Word Bomb is a browser-based, real-time, multiplayer elimination game where players take turns deriving a valid Turkish word containing a randomly assigned syllable (e.g., "KA"). If players fail to type a word before the timer runs out, the bomb they are holding explodes, and they lose a life.
+
+Problem Solved:
+
+The lack of setup-free, instantly accessible party games for friend groups.
+
+The inadequacy of existing "io" games regarding Turkish character support (İ, Ş, Ğ, etc.) and Turkish vocabulary.
+
+Target Audience:
+
+Discord communities, streamers, and their viewers.
+
+Students and individuals looking to improve their vocabulary.
+
+"Casual" gamers looking for quick (5-10 minute) sessions.
+
+Value Proposition:
+
+A game engine optimized 100% for the Turkish language structure.
+
+Fluid gameplay experience with low latency.
+
+Instant playability via browser without any downloads.
+
+Core Features
+1. The Syllable Engine
+What it does: Assigns a random syllable (2 or 3 letters) to the player each turn (e.g., "BA", "KIR", "ZEL").
+
+
+Why it's important: Ensures game balance and prevents "impossible" rounds.
+
+How it works: The system analyzes the Turkish dictionary. Instead of random letters, it selects syllables that appear in at least 50 (configurable) valid words in the dataset.
+
+2. Real-Time Word Validation
+What it does: Instantly checks the word typed by the player.
+
+
+Why it's important: Server response must be in milliseconds for gameplay flow.
+
+How it works:
+
+Does the input contain the syllable? (Regex check).
+
+Is the word in the dictionary? (Hash map / Set lookup).
+
+Has the word been used this round? (Used Words Array check).
+
+3. Bomb & Timer Mechanics
+What it does: A visual bomb countdown. As time decreases, the ticking sound and animation speed increase.
+
+
+Why it's important: The core element that creates tension and excitement.
+
+How it works: A server-side timer runs the countdown. Upon a successful word submission, the timer resets, and the bomb passes to the next player. If time runs out, the player loses a life.
+
+4. Lobby & Room Management
+What it does: Allows users to create private rooms or join public ones.
+
+
+Why it's important: Necessary for social interaction and isolating friend groups.
+
+How it works: Uses Socket.io "Rooms" feature to isolate game states.
+
+User Experience
+User Personas:
+
+
+Fast Player Ali: Wants to hit "Play" immediately on the bus or during a break to play with random people without signing up.
+
+
+Streamer Pelin: Wants to create a private room and share the link to play with her Twitch chat.
+
+Key User Flows:
+
+Entry: Enter Site -> Type Username -> Select Avatar (Optional).
+
+Lobby: "Create Room" or "Join" -> Waiting Room -> Mark "Ready".
+
+Game: Game Starts -> Your Turn -> See Syllable -> Type Word -> Enter -> Validate/Reject.
+
+
+Result: Lives Depleted -> Switch to Spectator Mode -> End Game Scoreboard.
+
+UI/UX Considerations:
+
+Minimalism: Only essential info (Syllable, Input Field, Remaining Players, Bomb) should be on screen.
+
+Feedback: Screen shake or red flash for invalid words; green flash and "ding" sound for valid ones.
+
+
+Mobile Compatibility: Critical that the virtual keyboard does not obscure the game area.
+
+Technical Architecture
+System Components:
+
+Backend: Node.js (Game logic and orchestration).
+
+WebSocket: Socket.io (Real-time bidirectional communication).
+
+Frontend: React.js + Tailwind CSS (SPA - Single Page Application).
+
+Dictionary Service: JSON-based, RAM-loaded optimized TDK dataset.
+
+Data Models (Simplified):
+
+Room: { id, players[], status (waiting/playing), currentSyllable, usedWords[] }
+
+Player: { socketId, nickname, lives, isTurn, score }
+
+Infrastructure:
+
+Node.js server running in Docker containers.
+
+Nginx (Reverse Proxy and SSL termination).
+
+Optional: Redis (For holding room states if scaling is needed).
+
+Development Roadmap
+Phase 1: The Core (Skeleton)
+Basic Node.js + Socket.io setup.
+
+Dictionary database integration and validation API.
+
+Basic "Echo" test: Client sends word -> Server validates -> Returns response.
+
+Room logic: Ensuring two users in different browsers can see each other.
+
+Goal: Two people can take turns typing text, even with a crude UI.
+
+Phase 2: The Game Loop (MVP)
+Turn management implementation.
+
+Timer (Bomb) logic.
+
+Health system and player elimination.
+
+Random syllable generation algorithm.
+
+Basic UI (Input field and syllable display).
+
+Goal: A playable, winnable/losable game loop.
+
+Phase 3: UX & Polish
+Animations (Bomb explosion, screen shake).
+
+Sound effects (Tick-tock, explosion, correct word).
+
+Mobile compatibility adjustments.
+
+Username and avatar selection.
+
+In-game chat.
+
+Goal: A "fun" feeling, releasable version.
+
+Logical Dependency Chain
+Foundation: The game engine cannot be written without cleaning and verifying the Turkish word list. The dataset must be prepared first.
+
+Connectivity: The game loop cannot be established without Socket connection and room management. Players must first be able to meet in the same "context".
+
+Core Logic: Before visual development, backend rules like whose turn it is, if time is up, and if the word is correct must work perfectly. The frontend should just be a mirror reflecting these rules.
+
+
+Feedback: Once the logic is solid, visual/audio feedback (UX) should be added.
+
+Risks and Mitigations
+Risk 1: Impossible Syllables.
+
+Issue: System giving a syllable (e.g., "ĞP") with no valid Turkish words.
+
+Mitigation: Pre-computation of the syllable pool to ensure every syllable has at least 50 valid dictionary matches.
+
+Risk 2: Network Latency (Lag).
+
+Issue: Player sends word right before time runs out, but latency causes an unfair explosion.
+
+Mitigation: Implementing a server-side grace period (e.g., 200ms).
+
+Risk 3: Abuse and Profanity.
+
+Issue: Use of profanity in usernames or free text input.
+
+Mitigation: Comprehensive "Bad Word Filter" (Blacklist) integration for both nicknames and in-game chat.
+
+Appendix
+Source: TDK (Turkish Language Association) Current Turkish Dictionary Dataset.
+
+Libraries: Socket.io (WebSocket), Zemberek (NLP - Optional for advanced checks).
