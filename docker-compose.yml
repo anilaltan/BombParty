@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: bombparty-backend
+    restart: always
+    environment:
+      - PORT=3001
+      # Frontend adresini buraya yazacağız (CORS hatası almamak için)
+      - CORS_ORIGIN=https://oyun.anilaltan.com
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build: ./frontend
+    container_name: bombparty-frontend
+    restart: always
+    ports:
+      - "8090:80" # Oyunu 8090 portundan yayınlayacağız
+    depends_on:
+      - backend
