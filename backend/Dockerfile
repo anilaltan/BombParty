@@ -1,18 +1,16 @@
 # backend/Dockerfile
-# Daha kararlı olan Node 20 LTS (Uzun Süreli Destek) sürümünü kullanıyoruz
-FROM node:20-alpine
+# DNS hatalarına karşı en dayanıklı olan Debian tabanlı imaj
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Sadece package.json'ı alıyoruz (npm'in lock dosyasını almamak için)
-COPY package.json ./
+COPY package*.json ./
 
-# NPM'i devreden çıkarıp YARN ile kuruyoruz
-# network-timeout: Her ihtimale karşı bağlantı kopmalarına tolerans tanıyoruz
-RUN yarn install --network-timeout 1000000
+# Artık garip ayarlara, yarn'a veya timeout'lara gerek yok. Temiz kurulum.
+RUN npm install
 
 COPY . .
 
 EXPOSE 3001
 
-CMD ["yarn", "start"]
+CMD ["npm", "start"]
