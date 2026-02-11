@@ -1,19 +1,18 @@
 # backend/Dockerfile
-FROM node:22-slim
+# Daha kararlı olan Node 20 LTS (Uzun Süreli Destek) sürümünü kullanıyoruz
+FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Sadece package.json'ı alıyoruz (npm'in lock dosyasını almamak için)
+COPY package.json ./
 
-# KRİTİK DEĞİŞİKLİK: Ağ yapılandırmasını zorluyoruz.
-# fetch-retry: Bağlantı koparsa pes etme, tekrar dene.
-# dns-result-order=ipv4first: IPv6 DNS sorunlarını kesin olarak aşar.
-RUN npm config set fetch-retry-mintimeout 20000 \
-    && npm config set fetch-retry-maxtimeout 120000 \
-    && npm install --no-audit --no-fund --dns-result-order=ipv4first
+# NPM'i devreden çıkarıp YARN ile kuruyoruz
+# network-timeout: Her ihtimale karşı bağlantı kopmalarına tolerans tanıyoruz
+RUN yarn install --network-timeout 1000000
 
 COPY . .
 
 EXPOSE 3001
 
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
