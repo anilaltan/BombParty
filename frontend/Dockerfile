@@ -1,5 +1,5 @@
 # frontend/Dockerfile
-FROM node:22-alpine as build
+FROM node:22-slim as build
 WORKDIR /app
 
 # KRİTİK AYAR: Ortamı 'development' yapıyoruz ki typescript ve vite yüklensin

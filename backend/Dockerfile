@@ -1,15 +1,16 @@
 # backend/Dockerfile
-FROM node:22-alpine
+# Alpine yerine Debian tabanlı 'slim' imajını kullanıyoruz. Ağ sorunlarını çözer.
+FROM node:22-slim
 
 WORKDIR /app
 
 COPY package*.json ./
-ENV NODE_OPTIONS="--max-old-space-size=1024"
-RUN npm ci --no-audit --no-fund
+
+# İnternet/DNS takılmalarını önlemek için standart install kullanıyoruz
+RUN npm install --no-audit --no-fund
 
 COPY . .
 
-# Backend genelde 3000 veya 3001 portunda çalışır
 EXPOSE 3001
 
 CMD ["npm", "start"]
