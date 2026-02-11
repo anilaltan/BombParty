@@ -1,16 +1,14 @@
-# backend/Dockerfile
-# DNS hatalarına karşı en dayanıklı olan Debian tabanlı imaj
 FROM node:20-bookworm-slim
-
 WORKDIR /app
 
+# Sadece paket listelerini kopyala
 COPY package*.json ./
 
-# Artık garip ayarlara, yarn'a veya timeout'lara gerek yok. Temiz kurulum.
-RUN npm install
+# Bağımlılıkları tertemiz kur
+RUN npm install --include=dev
 
+# Proje dosyalarını kopyala
 COPY . .
 
-EXPOSE 3001
-
+# Uygulamayı başlat
 CMD ["npm", "start"]
