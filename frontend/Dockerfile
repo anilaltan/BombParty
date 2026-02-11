@@ -6,7 +6,7 @@ WORKDIR /app
 ENV NODE_ENV=development
 
 COPY package*.json ./
-
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 # 'npm ci' yerine 'npm install' kullanıyoruz (daha esnektir)
 RUN npm ci --no-audit --no-fund
 

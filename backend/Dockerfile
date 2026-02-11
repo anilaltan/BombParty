@@ -4,6 +4,7 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package*.json ./
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 RUN npm ci --no-audit --no-fund
 
 COPY . .
