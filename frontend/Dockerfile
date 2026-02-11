@@ -1,19 +1,18 @@
-# frontend/Dockerfile
-# 1. Aşama: Build (Ağ kopmalarına karşı sağlam Debian slim imajı)
+# 1. Aşama: Build
 FROM node:20-bookworm-slim as build
 WORKDIR /app
 
-# TypeScript'in kurulması için Geliştirme Ortamı (development) zorunludur
+# Geliştirme bağımlılıklarının (TypeScript vb.) kurulmasını garantileyelim
 ENV NODE_ENV=development
 
 COPY package*.json ./
 
-# Temiz kurulum
+# Sadece npm install yerine dev paketlerini zorla kurmasını söylüyoruz
 RUN npm install --include=dev
 
 COPY . .
 
-# Oyunu derle (HTML/CSS/JS dosyalarını oluştur)
+# Oyunu derle
 RUN npm run build
 
 # 2. Aşama: Sunum (Nginx)
