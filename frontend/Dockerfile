@@ -9,7 +9,7 @@ ENV NODE_ENV=development
 COPY package*.json ./
 
 # Temiz kurulum
-RUN npm install
+RUN npm install --include=dev
 
 COPY . .
 
