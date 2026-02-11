@@ -1,6 +1,8 @@
 services:
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      network: host
     container_name: bombparty-backend
     restart: always
     environment:
@@ -11,7 +13,9 @@ services:
       - "3001:3001"
 
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      network: host
     container_name: bombparty-frontend
     restart: always
     ports:
