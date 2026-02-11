@@ -11,11 +11,29 @@ import { attachSocketHandlers } from './socketManager.js';
 const PORT = Number(process.env.PORT) || 3001;
 
 const app = express();
+
+const allowedOrigins = process.env.CORS_ORIGIN?.split(',').filter(Boolean);
+// CORS for HTTP (and Socket.IO long-polling handshake): reflect origin when unset so LAN/dev works
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins?.length) {
+    if (origin && allowedOrigins.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: allowedOrigins?.length ? allowedOrigins : true, // true = reflect request origin (required with credentials)
     credentials: true,
+    methods: ['GET', 'POST'],
   },
 });
 

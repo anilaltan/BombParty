@@ -16,7 +16,11 @@ export const EVENTS = {
   GAME_END: 'gameEnd',
 } as const;
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:3001';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ??
+  (typeof window !== 'undefined'
+    ? `http://${window.location.hostname}:3001`
+    : 'http://localhost:3001');
 
 export function createSocket(): Socket {
   return io(SOCKET_URL, {
