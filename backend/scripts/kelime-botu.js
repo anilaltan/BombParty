@@ -3,6 +3,7 @@ import fs from 'fs';
 
 // 2026 itibariyle en kararlı ve silinme ihtimali en düşük "Raw" kaynaklar:
 const SOURCES = [
+    'https://raw.githubusercontent.com/CanNuhlar/Turkce-Kelime-Listesi/refs/heads/master/turkce_kelime_listesi.txt',
     // 1. Kaynak: Utku Şen'in derlediği Türkçe kelime korpusu (En güvenilir ve geniş kaynaklardan biri)
     'https://raw.githubusercontent.com/utkusen/turkce-wordlist/master/corpus.txt',
 
