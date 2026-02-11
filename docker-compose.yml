@@ -1,24 +1,19 @@
 services:
   backend:
-    build: 
-      context: ./backend
-      network: host
+    image: bombparty-backend   # İnternetten değil, az önce bizim yarattığımız imaj
     container_name: bombparty-backend
     restart: always
     environment:
       - PORT=3001
-      # Frontend adresini buraya yazacağız (CORS hatası almamak için)
       - CORS_ORIGIN=https://oyun.anilaltan.com
     ports:
       - "3001:3001"
 
   frontend:
-    build: 
-      context: ./frontend
-      network: host
+    image: bombparty-frontend  # Bizim yarattığımız frontend imajı
     container_name: bombparty-frontend
     restart: always
     ports:
-      - "8090:80" # Oyunu 8090 portundan yayınlayacağız
+      - "8090:80"
     depends_on:
       - backend
