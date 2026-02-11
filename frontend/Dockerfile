@@ -2,13 +2,14 @@
 FROM node:20-bookworm-slim as build
 WORKDIR /app
 
-# Geliştirme bağımlılıklarının (TypeScript vb.) kurulmasını garantileyelim
-ENV NODE_ENV=development
+# KESİN ÇÖZÜM: TypeScript'i sistemin kendisine (global) kuruyoruz.
+# Böylece COPY komutu onu asla bozamaz.
+RUN npm install -g typescript vite
 
 COPY package*.json ./
 
-# Sadece npm install yerine dev paketlerini zorla kurmasını söylüyoruz
-RUN npm install --include=dev
+# Sadece bağımlılıkları kur
+RUN npm install
 
 COPY . .
 
