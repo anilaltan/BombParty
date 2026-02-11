@@ -8,7 +8,7 @@ ENV NODE_ENV=development
 COPY package*.json ./
 
 # 'npm ci' yerine 'npm install' kullanıyoruz (daha esnektir)
-RUN npm install
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 
