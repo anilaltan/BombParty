@@ -1,100 +1,84 @@
 import https from 'https';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// 2026 itibariyle en kararlı ve silinme ihtimali en düşük "Raw" kaynaklar:
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const OUTPUT_PATH = path.join(DATA_DIR, 'dictionary.json');
+
 const SOURCES = [
     'https://raw.githubusercontent.com/CanNuhlar/Turkce-Kelime-Listesi/refs/heads/master/turkce_kelime_listesi.txt',
-    // 1. Kaynak: Utku Şen'in derlediği Türkçe kelime korpusu (En güvenilir ve geniş kaynaklardan biri)
     'https://raw.githubusercontent.com/utkusen/turkce-wordlist/master/corpus.txt',
-
-    // 2. Kaynak: Mert Emin'in klasik kelime listesi (10+ yıldır yayında, ~63k kelime)
     'https://raw.githubusercontent.com/mertemin/turkish-word-list/master/words.txt',
-
-    // 3. Kaynak: Araya serpiştirilmiş TDK verileri içeren alternatif bir liste
-    'https://raw.githubusercontent.com/sahibinden/natural-language-processing-with-turkish/master/data/tr_words.txt'
+    'https://raw.githubusercontent.com/sahibinden/natural-language-processing-with-turkish/master/data/tr_words.txt',
 ];
 
-const OUTPUT_FILE = 'dictionary.json';
+const MIN_LEN = 2;
+const MAX_LEN = 30;
+const TURKISH_ALPHA = /^[a-zçğıöşü]+$/;
+const MIN_RAW_LENGTH = 1000;
 
-const downloadWords = (sourceIndex = 0) => {
-    if (sourceIndex >= SOURCES.length) {
-        console.error('❌ KRİTİK HATA: Tüm kaynaklar denendi ancak erişilemedi.');
-        console.error('⚠️ İnternet bağlantını veya GitHub erişimini kontrol et.');
+const fetchUrl = (url, baseUrl = url) =>
+    new Promise((resolve, reject) => {
+        const resolved = url.startsWith('http') ? url : new URL(url, baseUrl).href;
+        https.get(resolved, (res) => {
+            if (res.statusCode === 301 || res.statusCode === 302) {
+                const loc = res.headers.location;
+                if (loc) {
+                    res.resume();
+                    return fetchUrl(loc, resolved).then(resolve).catch(reject);
+                }
+            }
+            if (res.statusCode !== 200) {
+                res.resume();
+                return resolve(null);
+            }
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => resolve(data.length >= MIN_RAW_LENGTH ? data : null));
+        }).on('error', reject);
+    });
+
+const parseWords = (raw) =>
+    raw
+        .split(/\r?\n/)
+        .map((w) => w.trim().toLocaleLowerCase('tr-TR').normalize('NFC'))
+        .filter((w) => w.length >= MIN_LEN && w.length <= MAX_LEN && TURKISH_ALPHA.test(w));
+
+const main = async () => {
+    const results = await Promise.allSettled(
+        SOURCES.map((url, i) => {
+            console.log(`⬇️ [${i + 1}/${SOURCES.length}] ${url.slice(-50)}`);
+            return fetchUrl(url);
+        })
+    );
+
+    const allRaw = results
+        .map((r) => (r.status === 'fulfilled' ? r.value : null))
+        .filter(Boolean);
+
+    if (allRaw.length === 0) {
+        console.error('❌ Hiçbir kaynaktan veri alınamadı.');
         return;
     }
 
-    const currentUrl = SOURCES[sourceIndex];
-    console.log(`⬇️  Bağlanılıyor [Kaynak ${sourceIndex + 1}/${SOURCES.length}]: ...${currentUrl.slice(-40)}`);
+    console.log(`📥 ${allRaw.length}/${SOURCES.length} kaynak indirildi. Birleştiriliyor...`);
 
-    https.get(currentUrl, (res) => {
-        // Redirect (301/302) durumlarını takip et (GitHub bazen yönlendirme yapar)
-        if (res.statusCode === 301 || res.statusCode === 302) {
-            console.log('↪️  Yönlendirme takip ediliyor...');
-            downloadWords(sourceIndex); // Yeni lokasyonu otomatik dener (https modülü bazen bunu manuel ister ama raw linklerde genelde direkt gelir)
-            return;
-        }
+    const allWords = allRaw.flatMap(parseWords);
+    const unique = [...new Set(allWords)];
+    unique.sort((a, b) => a.localeCompare(b, 'tr'));
 
-        if (res.statusCode !== 200) {
-            console.warn(`⚠️  Kaynak ${sourceIndex + 1} yanıt vermedi (${res.statusCode}). Sıradaki deneniyor...`);
-            res.resume();
-            downloadWords(sourceIndex + 1);
-            return;
-        }
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(OUTPUT_PATH, JSON.stringify(unique, null, 2), 'utf-8');
 
-        let data = '';
-
-        res.on('data', (chunk) => {
-            data += chunk;
-        });
-
-        res.on('end', () => {
-            if (data.length < 1000) { // Eğer gelen veri çok kısaysa (hata mesajı vs.) geçersiz say
-                console.warn('⚠️  İndirilen dosya bozuk veya boş görünüyor. Sıradaki deneniyor...');
-                downloadWords(sourceIndex + 1);
-                return;
-            }
-            processData(data);
-        });
-
-    }).on('error', (err) => {
-        console.error(`❌ Bağlantı hatası: ${err.message}`);
-        downloadWords(sourceIndex + 1);
-    });
+    console.log('------------------------------------------------');
+    console.log(`✅ Toplam: ${unique.length} kelime (kopyalar çıkarıldı)`);
+    console.log(`📂 ${OUTPUT_PATH}`);
+    console.log('------------------------------------------------');
 };
 
-const processData = (rawData) => {
-    console.log('⚙️  Veri indirildi, temizleniyor ve JSON formatına çevriliyor...');
-
-    try {
-        const wordArray = rawData
-            .split(/\r?\n/)           // Satırlara böl
-            .map(word => word.trim()) // Boşlukları al
-            .map(word => word.toLocaleLowerCase('tr')) // Hepsini küçük harf yap
-            .filter(word => {
-                // SIKI FİLTRELEME:
-                // 1. En az 2 harfli olsun
-                // 2. Sadece Türkçe harflerden oluşsun (Rakam, emoji, nokta vs. varsa at)
-                return word.length >= 2 && /^[a-zA-ZçğıöşüÇĞİÖŞÜ]+$/.test(word);
-            });
-
-        // Tekrarlananları sil (Set kullanarak)
-        const uniqueWords = [...new Set(wordArray)];
-
-        // A-Z Sırala
-        uniqueWords.sort((a, b) => a.localeCompare(b, 'tr'));
-
-        const jsonContent = JSON.stringify(uniqueWords, null, 2);
-        fs.writeFileSync(OUTPUT_FILE, jsonContent, 'utf-8');
-
-        console.log('------------------------------------------------');
-        console.log(`✅ İŞLEM BAŞARILI!`);
-        console.log(`📊 Toplam Kelime Sayısı: ${uniqueWords.length}`);
-        console.log(`📂 Kaydedilen Dosya: ${process.cwd()}/${OUTPUT_FILE}`);
-        console.log('------------------------------------------------');
-    } catch (e) {
-        console.error('❌ İşleme hatası:', e);
-    }
-};
-
-// Başlat
-downloadWords();
+main().catch((err) => {
+    console.error('❌', err.message);
+    process.exit(1);
+});

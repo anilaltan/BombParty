@@ -6,6 +6,7 @@
  */
 
 import { getRandomSyllable, has as dictionaryHas } from './dictionary/index.js';
+import { normalizeTurkishLower } from './dictionary/filter.js';
 import { validateWord } from './validation/validateWord.js';
 import { createTurnTimer } from './timer/turnTimer.js';
 import { isProfane } from './profanity/index.js';
@@ -462,7 +463,7 @@ export function attachSocketHandlers(io) {
         reply({ ok: false, error: result.reason });
         return;
       }
-      const word = raw.toLocaleLowerCase('tr-TR');
+      const word = normalizeTurkishLower(raw);
       const inGrace =
         room.turnTimer?.getExpiredAt() != null &&
         Date.now() - room.turnTimer.getExpiredAt() <= GRACE_MS;

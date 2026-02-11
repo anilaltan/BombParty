@@ -64,7 +64,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     s.on(EVENTS.PLAYER_LIST, (list: Player[]) => setPlayers(list));
 
-    s.on(EVENTS.GAME_STATE, (payload: GameState) => setGameState(payload));
+    s.on(EVENTS.GAME_STATE, (payload: GameState) => {
+      setGameState(payload);
+      if (payload?.status === 'playing') setGameEnd(null);
+    });
 
     s.on(EVENTS.WORD_RESULT, (result: WordResult) => setLastWordResult(result));
 

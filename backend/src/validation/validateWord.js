@@ -29,7 +29,7 @@ import { normalizeTurkishLower } from '../dictionary/filter.js';
  */
 export function validateWord(word, syllable, usedWords = [], options = {}) {
   const normalizedWord = normalizeTurkishLower(word);
-  const normalizedSyllable = (typeof syllable === 'string' ? syllable : '').trim().toLocaleLowerCase('tr-TR');
+  const normalizedSyllable = (typeof syllable === 'string' ? syllable : '').trim().toLocaleLowerCase('tr-TR').normalize('NFC');
 
   if (!normalizedWord) {
     return { valid: false, reason: 'Word required' };

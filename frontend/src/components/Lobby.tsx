@@ -4,7 +4,12 @@ import { EVENTS } from '../lib/socket';
 import { AVATAR_OPTIONS, getAvatarEmoji } from '../lib/avatars';
 import type { Player } from '../types/game';
 
-export function Lobby() {
+type LobbyProps = {
+  onOpenDictionary?: () => void;
+  onOpenSettings?: () => void;
+};
+
+export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const { socket, connected, roomId, players, gameState, lastError, clearLastError } = useSocket();
   const [nickname, setNickname] = useState('');
   const [selectedAvatarId, setSelectedAvatarId] = useState<string>('1');
@@ -143,6 +148,26 @@ export function Lobby() {
           >
             Join
           </button>
+        </div>
+        <div className="flex gap-2 mt-2">
+          {onOpenSettings && (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-sm"
+            >
+              Ayarlar
+            </button>
+          )}
+          {onOpenDictionary && (
+            <button
+              type="button"
+              onClick={onOpenDictionary}
+              className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-sm"
+            >
+              Sözlük
+            </button>
+          )}
         </div>
         {err && <p className="text-red-400 text-sm">{err}</p>}
       </div>

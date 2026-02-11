@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../context/SocketContext';
+import { useSettings } from '../context/SettingsContext';
 import { EVENTS } from '../lib/socket';
 import { getAvatarEmoji } from '../lib/avatars';
 import type { Player } from '../types/game';
@@ -18,6 +19,7 @@ export function Game() {
     clearLastWordResult,
     clearGameEnd,
   } = useSocket();
+  const { soundEnabled } = useSettings();
   const [word, setWord] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [invalidFlash, setInvalidFlash] = useState(false);
@@ -107,7 +109,7 @@ export function Game() {
       }
       setTimerSecs(left);
       const intervalMs = left > 10 ? 1000 : left > 5 ? 500 : 250;
-      if (isMyTurnForTick && now - lastTickAtRef.current >= intervalMs) {
+      if (isMyTurnForTick && soundEnabled && now - lastTickAtRef.current >= intervalMs) {
         lastTickAtRef.current = now;
         playTick();
       }
@@ -123,6 +125,7 @@ export function Game() {
     gameState?.currentSyllable,
     socket?.id,
     playTick,
+    soundEnabled,
   ]);
 
   useEffect(() => {
@@ -133,10 +136,10 @@ export function Game() {
       return () => clearTimeout(t);
     }
     setValidFlash(true);
-    playDing();
+    if (soundEnabled) playDing();
     const t = setTimeout(() => setValidFlash(false), 500);
     return () => clearTimeout(t);
-  }, [lastWordResult, playDing]);
+  }, [lastWordResult, playDing, soundEnabled]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,8 +242,8 @@ export function Game() {
       <div className={`flex flex-col items-center gap-6 flex-1 min-h-0 ${gameContentClass}`}>
         <div ref={gameHeadRef} className="flex flex-col items-center gap-2">
           <h1 className="text-2xl font-bold">Word Bomb</h1>
-          <p className="text-5xl font-mono tracking-widest text-amber-400 uppercase">
-            {gameState.currentSyllable ?? '—'}
+          <p className="text-5xl font-mono tracking-widest text-amber-400 lowercase">
+            {gameState.currentSyllable?.toLocaleLowerCase('tr-TR') ?? '—'}
           </p>
           {timerSecs !== null && (
             <p className="text-2xl font-mono text-red-400">
@@ -248,6 +251,14 @@ export function Game() {
             </p>
           )}
         </div>
+        {(gameState.usedWords?.length ?? 0) > 0 && (
+          <div className="w-full max-w-md">
+            <p className="text-gray-400 text-sm font-medium mb-1">Kullanılan kelimeler</p>
+            <p className="text-gray-300 font-mono text-sm break-words">
+              {(gameState.usedWords ?? []).join(', ')}
+            </p>
+          </div>
+        )}
         {lastWordResult && (
           <p className={lastWordResult.ok ? 'text-emerald-400' : 'text-red-400'}>
             {lastWordResult.ok ? 'Correct!' : lastWordResult.error}

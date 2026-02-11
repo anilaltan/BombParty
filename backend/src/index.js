@@ -5,6 +5,8 @@ import { createServer } from 'http';
 import express from 'express';
 import { Server } from 'socket.io';
 import { loadDictionary, size, getWordList } from './dictionary/index.js';
+
+const API_PAGE_SIZE = 2000;
 import { initSyllablePool, getSyllablePoolSize } from './dictionary/syllables.js';
 import { attachSocketHandlers } from './socketManager.js';
 
@@ -26,6 +28,19 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
+});
+
+app.get('/api/dictionary', (req, res) => {
+  try {
+    const words = getWordList();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(5000, Math.max(1, Number(req.query.limit) || API_PAGE_SIZE));
+    const start = (page - 1) * limit;
+    const slice = words.slice(start, start + limit);
+    res.json({ words: slice, total: words.length });
+  } catch (e) {
+    res.status(500).json({ error: 'Dictionary not loaded' });
+  }
 });
 
 const httpServer = createServer(app);

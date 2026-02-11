@@ -21,11 +21,16 @@ const DEFAULT_PATH = join(__dirname, '../../data/dictionary.json');
  * @param {string} [filePath] - Path to dictionary.json; defaults to backend/data/dictionary.json
  * @returns {Promise<number>} Count of loaded words
  */
+function normalizeDictWord(w) {
+  return typeof w === 'string' ? w.trim().toLocaleLowerCase('tr-TR').normalize('NFC') : '';
+}
+
 export async function loadDictionary(filePath = DEFAULT_PATH) {
   const raw = await readFile(filePath, 'utf8');
   const arr = JSON.parse(raw);
   if (!Array.isArray(arr)) throw new Error('Dictionary JSON must be an array of strings');
-  wordSet = new Set(arr);
+  const normalized = arr.map(normalizeDictWord).filter(Boolean);
+  wordSet = new Set(normalized);
   return wordSet.size;
 }
 
@@ -36,7 +41,7 @@ export async function loadDictionary(filePath = DEFAULT_PATH) {
  */
 export function has(word) {
   if (!wordSet) throw new Error('Dictionary not loaded; call loadDictionary() first');
-  return wordSet.has(typeof word === 'string' ? word.trim().toLocaleLowerCase('tr-TR') : '');
+  return wordSet.has(normalizeDictWord(word ?? ''));
 }
 
 /**

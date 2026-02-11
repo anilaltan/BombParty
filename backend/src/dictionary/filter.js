@@ -5,12 +5,14 @@ const MIN_LEN = 2;
 const MAX_LEN = 30;
 
 /**
- * Normalize word to Turkish lowercase (tr-TR: İ→i, I→ı).
+ * Normalize word to Turkish lowercase (tr-TR: İ→i, I→ı) and Unicode NFC.
+ * NFC ensures consistent matching (e.g. "feda" with "eda" syllable) across clients/sources.
  * @param {string} word
  * @returns {string}
  */
 export function normalizeTurkishLower(word) {
-  return typeof word === 'string' ? word.trim().toLocaleLowerCase('tr-TR') : '';
+  if (typeof word !== 'string') return '';
+  return word.trim().toLocaleLowerCase('tr-TR').normalize('NFC');
 }
 
 /**

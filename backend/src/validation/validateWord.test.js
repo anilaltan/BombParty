@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { validateWord } from './validateWord.js';
 
-const dictSet = new Set(['kalem', 'kaçık', 'kale', 'şeker', 'çikolata']);
+const dictSet = new Set(['kalem', 'kaçık', 'kale', 'şeker', 'çikolata', 'feda']);
 const has = (word) => dictSet.has(word);
 
 describe('validateWord', () => {
@@ -39,6 +39,12 @@ describe('validateWord', () => {
   it('normalizes Turkish and checks syllable', () => {
     const r = validateWord('  KALEM  ', 'ka', [], { has });
     assert.strictEqual(r.valid, true);
+  });
+
+  it('accepts word containing syllable (e.g. feda for EDA)', () => {
+    const r = validateWord('feda', 'EDA', [], { has });
+    assert.strictEqual(r.valid, true);
+    assert.strictEqual(r.reason, undefined);
   });
 
   it('returns Validation unavailable when has is not provided', () => {
