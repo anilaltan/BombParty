@@ -1,13 +1,16 @@
 # backend/Dockerfile
-# Alpine yerine Debian tabanlı 'slim' imajını kullanıyoruz. Ağ sorunlarını çözer.
 FROM node:22-slim
 
 WORKDIR /app
 
 COPY package*.json ./
 
-# İnternet/DNS takılmalarını önlemek için standart install kullanıyoruz
-RUN npm install --no-audit --no-fund
+# KRİTİK DEĞİŞİKLİK: Ağ yapılandırmasını zorluyoruz.
+# fetch-retry: Bağlantı koparsa pes etme, tekrar dene.
+# dns-result-order=ipv4first: IPv6 DNS sorunlarını kesin olarak aşar.
+RUN npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm install --no-audit --no-fund --dns-result-order=ipv4first
 
 COPY . .
 
