@@ -1,21 +1,22 @@
 # frontend/Dockerfile
-FROM node:22-slim as build
+# 1. Aşama: Build (Ağ kopmalarına karşı sağlam Debian slim imajı)
+FROM node:20-bookworm-slim as build
 WORKDIR /app
 
-# KRİTİK AYAR: Ortamı 'development' yapıyoruz ki typescript ve vite yüklensin
+# TypeScript'in kurulması için Geliştirme Ortamı (development) zorunludur
 ENV NODE_ENV=development
 
 COPY package*.json ./
-ENV NODE_OPTIONS="--max-old-space-size=1024"
-# 'npm ci' yerine 'npm install' kullanıyoruz (daha esnektir)
-RUN npm ci --no-audit --no-fund
+
+# Temiz kurulum
+RUN npm install
 
 COPY . .
 
-# Artık tsc komutu bulunacak
+# Oyunu derle (HTML/CSS/JS dosyalarını oluştur)
 RUN npm run build
 
-# --- Sunum Katmanı ---
+# 2. Aşama: Sunum (Nginx)
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
