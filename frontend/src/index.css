@@ -39,8 +39,110 @@
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* Oyun arenası görsel kabı */
+.game-arena {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+  border-radius: 1rem;
+  background: radial-gradient(ellipse at center, rgba(60, 55, 50, 0.4) 0%, transparent 70%);
+}
+
+/* Bomba hece diski */
+.bomb-syllable-disk {
+  background: linear-gradient(180deg, rgba(80, 75, 70, 0.95) 0%, rgba(50, 45, 40, 0.98) 100%);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Oyuncu kartı — büyük ve net */
+.game-player-card {
+  background: linear-gradient(180deg, rgba(55, 52, 48, 0.98) 0%, rgba(38, 36, 33, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.game-player-card.current {
+  border: 2px solid rgba(234, 179, 8, 0.7);
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15), 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* --- Oyun arenası animasyonları --- */
+@keyframes bombPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@keyframes bombPulseUrgent {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+@keyframes turnArrow {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes playerCardHighlight {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.3); }
+}
+
+@keyframes feedbackPop {
+  0% { opacity: 0; transform: scale(0.9); }
+  70% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes timerTick {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.animate-bomb-pulse {
+  animation: bombPulse 2s ease-in-out infinite;
+}
+
+.animate-bomb-pulse-urgent {
+  animation: bombPulseUrgent 0.6s ease-in-out infinite;
+}
+
+.animate-arrow-pulse {
+  animation: arrowPulse 1.2s ease-in-out infinite;
+}
+
+.animate-turn-arrow {
+  animation: turnArrow 0.35s ease-out;
+}
+
+.animate-player-turn {
+  animation: playerCardHighlight 1.5s ease-in-out infinite;
+}
+
+.animate-feedback-pop {
+  animation: feedbackPop 0.4s ease-out;
+}
+
+.animate-timer-tick {
+  animation: timerTick 0.2s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shake-on-invalid {
+    animation: none;
+  }
+  .animate-bomb-pulse,
+  .animate-bomb-pulse-urgent,
+  .animate-arrow-pulse,
+  .animate-player-turn,
+  .animate-feedback-pop,
+  .animate-timer-tick {
     animation: none;
   }
 }
