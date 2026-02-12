@@ -12,8 +12,10 @@ export interface Player {
 export interface GameState {
   status: 'waiting' | 'playing';
   currentSyllable: string | null;
+  currentAttempt?: string;
   usedWords: string[];
   currentPlayerId: string | null;
+  turnDurationMs?: number;
   players: Player[];
 }
 

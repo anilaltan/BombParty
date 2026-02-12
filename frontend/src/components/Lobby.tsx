@@ -14,6 +14,10 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const [nickname, setNickname] = useState('');
   const [selectedAvatarId, setSelectedAvatarId] = useState<string>('1');
   const [roomCode, setRoomCode] = useState('');
+  const [timeMode, setTimeMode] = useState<'fixed' | 'range'>('fixed');
+  const [fixedSeconds, setFixedSeconds] = useState('15');
+  const [minSeconds, setMinSeconds] = useState('10');
+  const [maxSeconds, setMaxSeconds] = useState('20');
   const [actionError, setActionError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -38,16 +42,45 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
       setActionError('Not connected');
       return;
     }
+    const parsedFixed = Number(fixedSeconds);
+    const parsedMin = Number(minSeconds);
+    const parsedMax = Number(maxSeconds);
+    if (timeMode === 'fixed' && (!Number.isFinite(parsedFixed) || parsedFixed < 3 || parsedFixed > 60)) {
+      setActionError('Sabit sure 3-60 saniye olmali');
+      return;
+    }
+    if (
+      timeMode === 'range' &&
+      (!Number.isFinite(parsedMin) ||
+        !Number.isFinite(parsedMax) ||
+        parsedMin < 3 ||
+        parsedMax > 60 ||
+        parsedMin > parsedMax)
+    ) {
+      setActionError('Aralik 3-60 olmali ve min <= max olmali');
+      return;
+    }
     setCreating(true);
     const timeout = setTimeout(() => {
       setCreating(false);
       setActionError('Server did not respond. Is the backend running?');
     }, 8000);
-    socket.emit(EVENTS.CREATE_ROOM, { nickname: name, avatarId: selectedAvatarId }, (res: { ok?: boolean; error?: string }) => {
-      clearTimeout(timeout);
-      setCreating(false);
-      if (res && !res.ok) setActionError(res.error ?? 'Failed to create room');
-    });
+    socket.emit(
+      EVENTS.CREATE_ROOM,
+      {
+        nickname: name,
+        avatarId: selectedAvatarId,
+        turnTime:
+          timeMode === 'fixed'
+            ? { mode: 'fixed', fixedSeconds: parsedFixed }
+            : { mode: 'range', minSeconds: parsedMin, maxSeconds: parsedMax },
+      },
+      (res: { ok?: boolean; error?: string }) => {
+        clearTimeout(timeout);
+        setCreating(false);
+        if (res && !res.ok) setActionError(res.error ?? 'Failed to create room');
+      }
+    );
   };
 
   const handleJoinRoom = () => {
@@ -122,6 +155,67 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
           </div>
         </div>
         <div className="flex flex-col gap-2 items-center">
+          <div className="w-64 rounded border border-gray-700 bg-gray-800/50 p-3 text-sm space-y-2">
+            <p className="text-gray-300 font-medium">Tur suresi</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTimeMode('fixed')}
+                className={`flex-1 rounded px-2 py-1 ${
+                  timeMode === 'fixed' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+                }`}
+              >
+                Sabit
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeMode('range')}
+                className={`flex-1 rounded px-2 py-1 ${
+                  timeMode === 'range' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
+                }`}
+              >
+                Aralik
+              </button>
+            </div>
+            {timeMode === 'fixed' ? (
+              <label className="flex items-center justify-between gap-2">
+                <span className="text-gray-400">Saniye</span>
+                <input
+                  type="number"
+                  min={3}
+                  max={60}
+                  value={fixedSeconds}
+                  onChange={(e) => setFixedSeconds(e.target.value)}
+                  className="w-24 px-2 py-1 rounded bg-gray-900 border border-gray-600 text-white"
+                />
+              </label>
+            ) : (
+              <div className="flex gap-2">
+                <label className="flex-1 flex items-center justify-between gap-2">
+                  <span className="text-gray-400">Min</span>
+                  <input
+                    type="number"
+                    min={3}
+                    max={60}
+                    value={minSeconds}
+                    onChange={(e) => setMinSeconds(e.target.value)}
+                    className="w-20 px-2 py-1 rounded bg-gray-900 border border-gray-600 text-white"
+                  />
+                </label>
+                <label className="flex-1 flex items-center justify-between gap-2">
+                  <span className="text-gray-400">Max</span>
+                  <input
+                    type="number"
+                    min={3}
+                    max={60}
+                    value={maxSeconds}
+                    onChange={(e) => setMaxSeconds(e.target.value)}
+                    className="w-20 px-2 py-1 rounded bg-gray-900 border border-gray-600 text-white"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={handleCreateRoom}

@@ -19,6 +19,10 @@ export function Dictionary({ onBack }: Props) {
     try {
       const res = await fetch(getDictionaryUrl(p, PAGE_SIZE));
       if (!res.ok) throw new Error('Yüklenemedi');
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('API JSON yerine HTML döndü. Backend/proxy ayarını kontrol et.');
+      }
       const data = await res.json();
       setWords(data.words ?? []);
       setTotal(data.total ?? 0);

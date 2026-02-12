@@ -16,6 +16,7 @@ interface SocketContextValue {
   roomId: string | null;
   players: Player[];
   gameState: GameState | null;
+  liveAttempt: { playerId: string; word: string } | null;
   lastWordResult: WordResult | null;
   lastError: string | null;
   gameEnd: GameEndPayload | null;
@@ -40,6 +41,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [liveAttempt, setLiveAttempt] = useState<{ playerId: string; word: string } | null>(null);
   const [lastWordResult, setLastWordResult] = useState<WordResult | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
@@ -54,11 +56,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setRoomId(null);
       setPlayers([]);
       setGameState(null);
+      setLiveAttempt(null);
     });
 
     s.on(EVENTS.ROOM_JOINED, (id: string) => {
       setRoomId(id);
       setGameState(initialGameState);
+      setLiveAttempt(null);
       setGameEnd(null);
     });
 
@@ -66,7 +70,24 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     s.on(EVENTS.GAME_STATE, (payload: GameState) => {
       setGameState(payload);
+      setLiveAttempt((prev) => {
+        if (!payload?.currentPlayerId) return null;
+        const word = payload.currentAttempt ?? '';
+        if (!word) return null;
+        if (prev?.playerId === payload.currentPlayerId && prev.word === word) return prev;
+        return { playerId: payload.currentPlayerId, word };
+      });
       if (payload?.status === 'playing') setGameEnd(null);
+    });
+
+    s.on(EVENTS.WORD_ATTEMPT, (payload: { playerId?: string; word?: string }) => {
+      const playerId = payload?.playerId ?? '';
+      const word = payload?.word ?? '';
+      if (!playerId || !word) {
+        setLiveAttempt(null);
+        return;
+      }
+      setLiveAttempt({ playerId, word });
     });
 
     s.on(EVENTS.WORD_RESULT, (result: WordResult) => setLastWordResult(result));
@@ -77,6 +98,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     s.on(EVENTS.GAME_END, (payload: GameEndPayload) => {
       setGameEnd(payload);
+      setLiveAttempt(null);
       setGameState((prev) => (prev ? { ...prev, status: 'waiting' } : null));
     });
 
@@ -99,6 +121,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     roomId,
     players,
     gameState,
+    liveAttempt,
     lastWordResult,
     lastError,
     gameEnd,

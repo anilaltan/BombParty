@@ -5,7 +5,7 @@ import { EVENTS } from '../lib/socket';
 import { getAvatarEmoji } from '../lib/avatars';
 import type { Player } from '../types/game';
 
-const TURN_DURATION_MS = 15000;
+const DEFAULT_TURN_DURATION_MS = 15000;
 
 export function Game() {
   const {
@@ -14,6 +14,7 @@ export function Game() {
     roomId,
     players,
     gameState,
+    liveAttempt,
     lastWordResult,
     gameEnd,
     clearLastWordResult,
@@ -24,11 +25,15 @@ export function Game() {
   const [submitting, setSubmitting] = useState(false);
   const [invalidFlash, setInvalidFlash] = useState(false);
   const [validFlash, setValidFlash] = useState(false);
+  const [turnNoticeVisible, setTurnNoticeVisible] = useState(false);
   const [timerSecs, setTimerSecs] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endAtRef = useRef<number | null>(null);
   const lastTickAtRef = useRef<number>(0);
+  const turnNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevIsMyTurnRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const gameHeadRef = useRef<HTMLDivElement>(null);
 
   const getAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
@@ -77,9 +82,32 @@ export function Game() {
     }
   }, [getAudioContext]);
 
+  const speakMyTurn = useCallback(() => {
+    if (!soundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance('Sira sende');
+      utterance.lang = 'tr-TR';
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // ignore
+    }
+  }, [soundEnabled]);
+
+  const scrollGameAreaIntoView = useCallback(() => {
+    gameHeadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   const isMyTurn =
     gameState?.status === 'playing' &&
     gameState.currentPlayerId === socket?.id;
+
+  useEffect(() => {
+    if (gameState?.status !== 'playing' || !isMyTurn) return;
+    socket?.emit(EVENTS.WORD_ATTEMPT, { word });
+  }, [gameState?.status, isMyTurn, socket, word]);
 
   // Client-side countdown: start when gameState changes (new turn); bomb tick sound speeds up as time runs out
   useEffect(() => {
@@ -92,7 +120,8 @@ export function Game() {
       endAtRef.current = null;
       return;
     }
-    const endAt = Date.now() + TURN_DURATION_MS;
+    const turnDurationMs = gameState.turnDurationMs ?? DEFAULT_TURN_DURATION_MS;
+    const endAt = Date.now() + turnDurationMs;
     endAtRef.current = endAt;
     lastTickAtRef.current = Date.now();
     const isMyTurnForTick = gameState.currentPlayerId === socket?.id;
@@ -140,6 +169,42 @@ export function Game() {
     const t = setTimeout(() => setValidFlash(false), 500);
     return () => clearTimeout(t);
   }, [lastWordResult, playDing, soundEnabled]);
+
+  useEffect(() => {
+    if (gameState?.status !== 'playing') {
+      prevIsMyTurnRef.current = false;
+      setTurnNoticeVisible(false);
+      if (turnNoticeTimeoutRef.current) {
+        clearTimeout(turnNoticeTimeoutRef.current);
+        turnNoticeTimeoutRef.current = null;
+      }
+      return;
+    }
+    const justBecameMyTurn = isMyTurn && !prevIsMyTurnRef.current;
+    if (justBecameMyTurn) {
+      setTurnNoticeVisible(true);
+      if (soundEnabled) playDing();
+      speakMyTurn();
+      if (turnNoticeTimeoutRef.current) clearTimeout(turnNoticeTimeoutRef.current);
+      turnNoticeTimeoutRef.current = setTimeout(() => {
+        setTurnNoticeVisible(false);
+      }, 2500);
+    }
+    if (!isMyTurn) {
+      setTurnNoticeVisible(false);
+      if (turnNoticeTimeoutRef.current) {
+        clearTimeout(turnNoticeTimeoutRef.current);
+        turnNoticeTimeoutRef.current = null;
+      }
+    }
+    prevIsMyTurnRef.current = isMyTurn;
+    return () => {
+      if (turnNoticeTimeoutRef.current) {
+        clearTimeout(turnNoticeTimeoutRef.current);
+        turnNoticeTimeoutRef.current = null;
+      }
+    };
+  }, [gameState?.status, isMyTurn, playDing, soundEnabled, speakMyTurn]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,16 +297,16 @@ export function Game() {
     .filter(Boolean)
     .join(' ');
 
-  const gameHeadRef = useRef<HTMLDivElement>(null);
-  const scrollGameAreaIntoView = useCallback(() => {
-    gameHeadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
-
   return (
     <div className="game-screen bg-gray-900 text-white flex flex-col items-center p-4 gap-6 overflow-y-auto">
       <div className={`flex flex-col items-center gap-6 flex-1 min-h-0 ${gameContentClass}`}>
         <div ref={gameHeadRef} className="flex flex-col items-center gap-2">
           <h1 className="text-2xl font-bold">Word Bomb</h1>
+          {turnNoticeVisible && isMyTurn && (
+            <p className="px-4 py-1 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 font-semibold animate-pulse">
+              Sira sende!
+            </p>
+          )}
           <p className="text-5xl font-mono tracking-widest text-amber-400 lowercase">
             {gameState.currentSyllable?.toLocaleLowerCase('tr-TR') ?? '—'}
           </p>
@@ -286,9 +351,16 @@ export function Game() {
           </form>
         )}
         {!isMyTurn && gameState.currentPlayerId && (
-          <p className="text-gray-400">
-            Waiting for {players.find((p) => p.socketId === gameState.currentPlayerId)?.nickname ?? 'player'}...
-          </p>
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-gray-400">
+              Waiting for {players.find((p) => p.socketId === gameState.currentPlayerId)?.nickname ?? 'player'}...
+            </p>
+            {!!liveAttempt?.word && liveAttempt.playerId === gameState.currentPlayerId && (
+              <p className="text-amber-300 font-mono text-sm break-all max-w-md text-center">
+                Deniyor: {liveAttempt.word}
+              </p>
+            )}
+          </div>
         )}
         <ul className="list-none w-64 space-y-1 border-t border-gray-700 pt-4">
           {players.map((p: Player) => (

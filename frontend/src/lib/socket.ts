@@ -11,6 +11,7 @@ export const EVENTS = {
   START_GAME: 'startGame',
   GAME_STATE: 'gameState',
   SUBMIT_WORD: 'submitWord',
+  WORD_ATTEMPT: 'wordAttempt',
   WORD_RESULT: 'wordResult',
   BOMB_EXPLODED: 'bombExploded',
   GAME_END: 'gameEnd',
