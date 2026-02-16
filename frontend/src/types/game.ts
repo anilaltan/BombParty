@@ -7,6 +7,8 @@ export interface Player {
   lives: number;
   score: number;
   isEliminated: boolean;
+  wordsFound?: number;
+  usedLetters?: string[];
 }
 
 export interface GameState {
@@ -22,9 +24,18 @@ export interface GameState {
 export interface WordResult {
   ok: boolean;
   error?: string;
+  word?: string;
 }
 
 export interface GameEndPayload {
   winner: string | null;
   players: Array<{ socketId: string; nickname?: string; avatarId?: string; score: number; isEliminated: boolean }>;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  text: string;
+  timestamp: number;
+  type: 'chat' | 'system';
 }

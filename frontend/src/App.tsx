@@ -20,26 +20,20 @@ function AppContent() {
   if (view === 'settings') {
     return <Settings onBack={() => setView('main')} />;
   }
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {showGame ? (
-        <Game />
-      ) : (
-        <Lobby
-          onOpenDictionary={() => setView('dictionary')}
-          onOpenSettings={() => setView('settings')}
-        />
-      )}
-    </div>
+  return showGame ? (
+    <Game />
+  ) : (
+    <Lobby
+      onOpenDictionary={() => setView('dictionary')}
+      onOpenSettings={() => setView('settings')}
+    />
   );
 }
 
 function App() {
   return (
     <SettingsProvider>
-      <div className="min-h-screen bg-gray-900 text-white">
-        <AppContent />
-      </div>
+      <AppContent />
     </SettingsProvider>
   );
 }

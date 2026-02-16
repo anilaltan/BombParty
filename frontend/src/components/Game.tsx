@@ -1,43 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useSettings } from '../context/SettingsContext';
 import { EVENTS } from '../lib/socket';
 import { getAvatarEmoji } from '../lib/avatars';
-import type { Player } from '../types/game';
+import type { Player, ChatMessage } from '../types/game';
 
 const DEFAULT_TURN_DURATION_MS = 15000;
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-const BOMB_RADIUS = 68;
-const PLAYER_CARD_W = 112;
-const PLAYER_CARD_H = 132;
-
-const MAX_ARENA = 620;
-
-function getArenaLayout(playerCount: number) {
-  const n = Math.max(playerCount, 1);
-  const minRadius = 180;
-  const radiusPerPlayer = 42;
-  let playerRadius = minRadius + radiusPerPlayer * n;
-  let arenaSize = Math.ceil(2 * playerRadius + PLAYER_CARD_H * 1.15);
-  if (arenaSize > MAX_ARENA) {
-    arenaSize = MAX_ARENA;
-    playerRadius = (arenaSize - PLAYER_CARD_H * 1.15) / 2;
-  }
-  return { arenaSize, playerRadius };
-}
-
-function getCirclePosition(
-  index: number,
-  total: number,
-  radius: number,
-  center: number
-) {
-  const angle = (2 * Math.PI * index) / total - Math.PI / 2;
-  return {
-    x: center + radius * Math.cos(angle),
-    y: center + radius * Math.sin(angle),
-    angleDeg: (angle * 180) / Math.PI,
-  };
+function formatTime(ms: number): string {
+  const totalSecs = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 export function Game() {
@@ -58,16 +33,29 @@ export function Game() {
   const [submitting, setSubmitting] = useState(false);
   const [invalidFlash, setInvalidFlash] = useState(false);
   const [validFlash, setValidFlash] = useState(false);
-  const [turnNoticeVisible, setTurnNoticeVisible] = useState(false);
-  const [showRules, setShowRules] = useState(false);
-  const [timerSecs, setTimerSecs] = useState<number | null>(null);
+  const [timerMs, setTimerMs] = useState<number | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [myUsedLetters, setMyUsedLetters] = useState<Set<string>>(new Set());
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endAtRef = useRef<number | null>(null);
   const lastTickAtRef = useRef<number>(0);
-  const turnNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevIsMyTurnRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const gameHeadRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const wordInputRef = useRef<HTMLInputElement>(null);
+  const arenaRef = useRef<HTMLDivElement>(null);
+  const [arenaSize, setArenaSize] = useState({ w: 600, h: 500 });
+
+  useEffect(() => {
+    if (!arenaRef.current) return;
+    const obs = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (e) setArenaSize({ w: e.contentRect.width, h: e.contentRect.height });
+    });
+    obs.observe(arenaRef.current);
+    return () => obs.disconnect();
+  }, []);
 
   const getAudioContext = useCallback(() => {
     if (audioContextRef.current) return audioContextRef.current;
@@ -77,6 +65,7 @@ export function Game() {
   }, []);
 
   const playDing = useCallback(() => {
+    if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -91,12 +80,11 @@ export function Game() {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.15);
-    } catch {
-      // ignore
-    }
-  }, [getAudioContext]);
+    } catch { /* ignore */ }
+  }, [getAudioContext, soundEnabled]);
 
   const playTick = useCallback(() => {
+    if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
       if (!ctx) return;
@@ -111,46 +99,27 @@ export function Game() {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.05);
-    } catch {
-      // ignore
-    }
-  }, [getAudioContext]);
-
-  const speakMyTurn = useCallback(() => {
-    if (!soundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance('Sira sende');
-      utterance.lang = 'tr-TR';
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // ignore
-    }
-  }, [soundEnabled]);
-
-  const scrollGameAreaIntoView = useCallback(() => {
-    gameHeadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+    } catch { /* ignore */ }
+  }, [getAudioContext, soundEnabled]);
 
   const isMyTurn =
     gameState?.status === 'playing' &&
     gameState.currentPlayerId === socket?.id;
 
+  // Send live word attempts
   useEffect(() => {
     if (gameState?.status !== 'playing' || !isMyTurn) return;
     socket?.emit(EVENTS.WORD_ATTEMPT, { word });
   }, [gameState?.status, isMyTurn, socket, word]);
 
-  // Client-side countdown: start when gameState changes (new turn); bomb tick sound speeds up as time runs out
+  // Timer countdown
   useEffect(() => {
     if (gameState?.status !== 'playing' || !gameState.currentPlayerId) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      setTimerSecs(null);
+      setTimerMs(null);
       endAtRef.current = null;
       return;
     }
@@ -161,36 +130,30 @@ export function Game() {
     const isMyTurnForTick = gameState.currentPlayerId === socket?.id;
     const tick = () => {
       const now = Date.now();
-      const left = Math.ceil((endAtRef.current! - now) / 1000);
+      const left = Math.max(0, endAtRef.current! - now);
+      setTimerMs(left);
       if (left <= 0) {
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        setTimerSecs(0);
         return;
       }
-      setTimerSecs(left);
-      const intervalMs = left > 10 ? 1000 : left > 5 ? 500 : 250;
+      const secs = Math.ceil(left / 1000);
+      const intervalMs = secs > 10 ? 1000 : secs > 5 ? 500 : 250;
       if (isMyTurnForTick && soundEnabled && now - lastTickAtRef.current >= intervalMs) {
         lastTickAtRef.current = now;
         playTick();
       }
     };
     tick();
-    timerRef.current = setInterval(tick, 200);
+    timerRef.current = setInterval(tick, 100);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [
-    gameState?.status,
-    gameState?.currentPlayerId,
-    gameState?.currentSyllable,
-    socket?.id,
-    playTick,
-    soundEnabled,
-  ]);
+  }, [gameState?.status, gameState?.currentPlayerId, gameState?.currentSyllable, socket?.id, playTick, soundEnabled]);
 
+  // Flash feedback
   useEffect(() => {
     if (!lastWordResult) return;
     if (!lastWordResult.ok) {
@@ -200,45 +163,40 @@ export function Game() {
     }
     setValidFlash(true);
     if (soundEnabled) playDing();
+    // Track used letters from accepted word
+    if (lastWordResult.word) {
+      const letters = new Set(lastWordResult.word.toUpperCase().split('').filter(c => /[A-ZÇĞIİÖŞÜ]/.test(c)));
+      setMyUsedLetters(prev => {
+        const next = new Set(prev);
+        letters.forEach(l => next.add(l));
+        return next;
+      });
+    }
     const t = setTimeout(() => setValidFlash(false), 500);
     return () => clearTimeout(t);
   }, [lastWordResult, playDing, soundEnabled]);
 
+
+  // My turn ding
+  const prevIsMyTurnRef = useRef(false);
   useEffect(() => {
     if (gameState?.status !== 'playing') {
       prevIsMyTurnRef.current = false;
-      setTurnNoticeVisible(false);
-      if (turnNoticeTimeoutRef.current) {
-        clearTimeout(turnNoticeTimeoutRef.current);
-        turnNoticeTimeoutRef.current = null;
-      }
       return;
     }
     const justBecameMyTurn = isMyTurn && !prevIsMyTurnRef.current;
-    if (justBecameMyTurn) {
-      setTurnNoticeVisible(true);
-      if (soundEnabled) playDing();
-      speakMyTurn();
-      if (turnNoticeTimeoutRef.current) clearTimeout(turnNoticeTimeoutRef.current);
-      turnNoticeTimeoutRef.current = setTimeout(() => {
-        setTurnNoticeVisible(false);
-      }, 2500);
-    }
-    if (!isMyTurn) {
-      setTurnNoticeVisible(false);
-      if (turnNoticeTimeoutRef.current) {
-        clearTimeout(turnNoticeTimeoutRef.current);
-        turnNoticeTimeoutRef.current = null;
-      }
+    if (justBecameMyTurn && soundEnabled) {
+      playDing();
+      wordInputRef.current?.focus();
     }
     prevIsMyTurnRef.current = isMyTurn;
-    return () => {
-      if (turnNoticeTimeoutRef.current) {
-        clearTimeout(turnNoticeTimeoutRef.current);
-        turnNoticeTimeoutRef.current = null;
-      }
-    };
-  }, [gameState?.status, isMyTurn, playDing, soundEnabled, speakMyTurn]);
+  }, [gameState?.status, isMyTurn, playDing, soundEnabled]);
+
+
+  // Scroll chat to bottom on new messages
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,64 +214,121 @@ export function Game() {
     );
   };
 
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = chatInput.trim();
+    if (!text) return;
+    const me = players.find(p => p.socketId === socket?.id);
+    const msg: ChatMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      sender: me?.nickname ?? socket?.id?.slice(0, 8) ?? 'You',
+      text,
+      timestamp: Date.now(),
+      type: 'chat',
+    };
+    setChatMessages(prev => [...prev.slice(-100), msg]);
+    setChatInput('');
+  };
+
+  // Compute player layout positions
+  const playerPositions = useMemo(() => {
+    const n = Math.max(players.length, 1);
+    const cx = arenaSize.w / 2;
+    const cy = arenaSize.h / 2;
+    const rx = Math.min(arenaSize.w * 0.38, 280);
+    const ry = Math.min(arenaSize.h * 0.36, 220);
+    return players.map((_, i) => {
+      const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+      return {
+        x: cx + rx * Math.cos(angle),
+        y: cy + ry * Math.sin(angle),
+        angle,
+      };
+    });
+  }, [players.length, arenaSize]);
+
   if (!connected) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <p className="text-amber-400">Connecting...</p>
+      <div className="jklm-lobby">
+        <p style={{ color: 'var(--jklm-gold)' }}>Connecting...</p>
       </div>
     );
   }
 
+  // Game end screen
   if (gameEnd) {
-    const winnerPlayer = gameEnd.players.find((p) => p.socketId === gameEnd.winner);
-    const winnerName =
-      winnerPlayer?.nickname?.trim() ||
-      (winnerPlayer?.socketId && winnerPlayer.socketId.slice(0, 8)) ||
-      (gameEnd.winner && String(gameEnd.winner).slice(0, 8)) ||
-      'Winner';
+    const winnerPlayer = gameEnd.players.find(p => p.socketId === gameEnd.winner);
+    const winnerName = winnerPlayer?.nickname?.trim() || winnerPlayer?.socketId?.slice(0, 8) || 'Winner';
     const sorted = [...gameEnd.players].sort((a, b) => b.score - a.score);
     const isWinner = gameEnd.winner === socket?.id;
+
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6 gap-8">
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-6xl" aria-hidden>{gameEnd.winner ? '🏆' : '🤝'}</span>
-          <h1 className="text-3xl font-bold text-center">
+      <div className="jklm-game-end">
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 8 }}>{gameEnd.winner ? '🏆' : '🤝'}</div>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: 'white', margin: '0 0 8px' }}>
             {gameEnd.winner ? (isWinner ? 'You Win!' : 'Game Over') : 'Draw'}
           </h1>
           {gameEnd.winner && (
-            <p className={`text-xl ${isWinner ? 'text-amber-400' : 'text-gray-300'}`}>
+            <p style={{ fontSize: 18, color: isWinner ? 'var(--jklm-gold)' : 'var(--jklm-text)' }}>
               {winnerName} wins!
             </p>
           )}
         </div>
-        <div className="w-full max-w-xs rounded-xl bg-gray-800/80 border border-gray-700 overflow-hidden">
-          <div className="px-4 py-2 bg-gray-700/50 text-gray-400 text-sm font-medium uppercase tracking-wider">
-            Final scores
+        <div style={{
+          width: '100%',
+          maxWidth: 320,
+          background: 'var(--jklm-bg-dark)',
+          border: '1px solid var(--jklm-border)',
+          borderRadius: 12,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '8px 16px',
+            background: 'var(--jklm-bg-darker)',
+            color: 'var(--jklm-text-muted)',
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}>
+            Final Scores
           </div>
-          <ul className="divide-y divide-gray-700">
-            {sorted.map((p, i) => (
-              <li
-                key={p.socketId ?? i}
-                className={`flex justify-between items-center gap-4 px-4 py-3 ${
-                  p.socketId === gameEnd.winner ? 'bg-amber-500/10 text-amber-400' : ''
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-gray-500 w-5 text-sm">#{i + 1}</span>
-                  <span className="text-lg">{getAvatarEmoji(p.avatarId)}</span>
-                  <span className="font-medium">{p.nickname?.trim() || p.socketId?.slice(0, 8) || '—'}</span>
+          {sorted.map((p, i) => (
+            <div
+              key={p.socketId ?? i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 16px',
+                borderBottom: '1px solid var(--jklm-border)',
+                background: p.socketId === gameEnd.winner ? 'rgba(234,179,8,0.08)' : 'transparent',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--jklm-text-muted)', fontSize: 13, width: 20 }}>#{i + 1}</span>
+                <span style={{ fontSize: 20 }}>{getAvatarEmoji(p.avatarId)}</span>
+                <span style={{
+                  fontWeight: 600,
+                  color: p.socketId === gameEnd.winner ? 'var(--jklm-gold)' : 'var(--jklm-text)',
+                }}>
+                  {p.nickname?.trim() || p.socketId?.slice(0, 8) || '—'}
                 </span>
-                <span className="font-mono tabular-nums">{p.score}</span>
-              </li>
-            ))}
-          </ul>
+              </span>
+              <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 16 }}>
+                {p.score}
+              </span>
+            </div>
+          ))}
         </div>
         <button
           type="button"
           onClick={clearGameEnd}
-          className="px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-medium transition"
+          className="jklm-lobby-btn-primary"
+          style={{ maxWidth: 240 }}
         >
-          Back to lobby
+          Back to Lobby
         </button>
       </div>
     );
@@ -323,229 +338,322 @@ export function Game() {
     return null;
   }
 
-  const gameContentClass = [
-    'game-content',
-    invalidFlash && 'shake-on-invalid flash-red-on-invalid',
-    validFlash && 'flash-green-on-valid',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const n = Math.max(players.length, 1);
-  const { arenaSize, playerRadius } = getArenaLayout(n);
-  const center = arenaSize / 2;
+  const n = players.length;
   const currentPlayerIndex = gameState.currentPlayerId
-    ? players.findIndex((p) => p.socketId === gameState.currentPlayerId)
+    ? players.findIndex(p => p.socketId === gameState.currentPlayerId)
     : -1;
-  const arrowAngle = currentPlayerIndex >= 0 ? (2 * Math.PI * currentPlayerIndex) / n - Math.PI / 2 : 0;
+  const timerSecs = timerMs !== null ? Math.ceil(timerMs / 1000) : null;
   const timerUrgent = timerSecs !== null && timerSecs <= 5;
 
+  const cx = arenaSize.w / 2;
+  const cy = arenaSize.h / 2;
+
+  // Arrow endpoint toward current player
+  const arrowTarget = currentPlayerIndex >= 0 ? playerPositions[currentPlayerIndex] : null;
+  const arrowLength = arrowTarget
+    ? Math.sqrt((arrowTarget.x - cx) ** 2 + (arrowTarget.y - cy) ** 2) - 60
+    : 0;
+  const arrowAngle = arrowTarget?.angle ?? 0;
+
+  const gameFlashClass = [
+    invalidFlash && 'shake-on-invalid flash-red-on-invalid',
+    validFlash && 'flash-green-on-valid',
+  ].filter(Boolean).join(' ');
+
+  const wordsPlayed = gameState.usedWords?.length ?? 0;
+
   return (
-    <div className={`game-screen bg-[#252220] text-white flex flex-col min-h-0 ${gameContentClass}`}>
-      <header className="flex items-center justify-between px-4 py-3.5 shrink-0 border-b border-white/[0.08] bg-black/20">
-        <span className="text-gray-400 text-base font-medium">Türkçe (min. 1 kelime)</span>
-        <button
-          type="button"
-          onClick={() => setShowRules((r) => !r)}
-          className="px-5 py-2.5 rounded-lg bg-white/[0.12] hover:bg-white/[0.18] text-gray-100 text-base font-medium border border-white/[0.08] transition-colors"
-        >
-          Kurallar
-        </button>
+    <div className={`jklm-layout ${gameFlashClass}`}>
+      {/* ===== HEADER BAR ===== */}
+      <header className="jklm-header">
+        <span className="jklm-logo">BOMBPARTY</span>
+        <span className="jklm-player-count">{n}</span>
+        <span className="jklm-room-name">Room {roomId}</span>
+        <span style={{ color: 'var(--jklm-text-muted)', fontSize: 12 }}>•</span>
+        <span className="jklm-timer-badge">
+          {timerMs !== null ? formatTime(timerMs) : '00:00'}
+          <span style={{ marginLeft: 6, opacity: 0.6 }}>({wordsPlayed} words)</span>
+        </span>
+        <div style={{ flex: 1 }} />
+        <span className={`jklm-timer-display ${timerUrgent ? 'urgent' : ''}`}>
+          {timerSecs !== null ? `${timerSecs}s` : ''}
+        </span>
       </header>
 
-      {showRules && (
-        <div className="px-4 py-3.5 border-b border-white/[0.08] bg-black/20 text-base text-gray-400 leading-relaxed">
-          Heceyi içeren geçerli bir kelime yaz. Süre dolmadan gönder; yoksa elenirsin. Canlar bitene kadar hayatta kal.
+      {/* ===== GAME AREA ===== */}
+      <div className="jklm-game-area" ref={arenaRef}>
+        {/* Language bar */}
+        <div className="jklm-language-bar">
+          Türkçe (min. 1 kelime)
         </div>
-      )}
 
-      <div ref={gameHeadRef} className="flex-1 flex flex-col items-center justify-center p-4 min-h-0 overflow-auto">
-        <div
-          className="relative shrink-0 max-w-[min(100vw-2rem,640px)] max-h-[min(90dvh,640px)] game-arena"
-          style={{ width: arenaSize, height: arenaSize }}
-        >
-          {/* Oyuncular dairede — konumlar üst üste binmeyecek şekilde */}
+        <div className="jklm-arena">
+          {/* Players around the arena */}
           {players.map((p: Player, i: number) => {
-            const pos = getCirclePosition(i, n, playerRadius, center);
+            const pos = playerPositions[i];
+            if (!pos) return null;
             const isCurrent = p.socketId === gameState.currentPlayerId;
-            const currentWord =
-              isCurrent && (liveAttempt?.word ?? gameState.currentSyllable)
-                ? (liveAttempt?.word ?? gameState.currentSyllable ?? '').toUpperCase()
-                : '';
+            const currentWord = isCurrent ? (liveAttempt?.word ?? '').toUpperCase() : '';
+
             return (
               <div
                 key={p.socketId}
-                className={`absolute flex flex-col items-center justify-center transition-all duration-300 rounded-2xl p-3 game-player-card ${isCurrent ? 'current animate-player-turn' : ''}`}
+                className="jklm-player"
                 style={{
-                  width: PLAYER_CARD_W,
-                  height: PLAYER_CARD_H,
-                  left: pos.x - PLAYER_CARD_W / 2,
-                  top: pos.y - PLAYER_CARD_H / 2,
+                  left: pos.x - 50,
+                  top: pos.y - 45,
+                  width: 100,
                 }}
               >
-                <span className="text-base mb-1.5 leading-none select-none">
-                  {p.isEliminated ? '💀' : '❤️'.repeat(Math.min(p.lives, 3))}
+                <span className="jklm-player-name">
+                  {p.nickname?.trim() ?? p.socketId.slice(0, 10)}
                 </span>
-                <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl border-2 transition-colors shrink-0 ${
-                    isCurrent ? 'border-amber-400 bg-amber-500/15' : 'border-gray-600 bg-gray-700'
-                  } ${p.isEliminated ? 'opacity-50 grayscale' : ''}`}
-                >
+                <div className={`jklm-player-avatar ${isCurrent ? 'current' : ''} ${p.isEliminated ? 'eliminated' : ''}`}>
                   {getAvatarEmoji(p.avatarId)}
                 </div>
-                <span
-                  className={`text-sm mt-2 text-center truncate max-w-full px-1 leading-snug font-semibold antialiased ${
-                    p.isEliminated ? 'text-gray-500' : 'text-gray-100'
-                  }`}
-                  title={p.nickname ?? p.socketId}
-                >
-                  {p.nickname?.trim() ?? p.socketId.slice(0, 10) ?? '—'}
-                </span>
-                <span
-                  className={`text-xs font-mono text-center truncate max-w-full leading-snug mt-0.5 antialiased ${
-                    isCurrent ? 'text-emerald-400 font-bold' : 'text-gray-400'
-                  }`}
-                >
-                  {currentWord || '—'}
-                </span>
+                <div className="jklm-player-hearts">
+                  {Array.from({ length: 3 }).map((_, li) => (
+                    <span key={li} className={`jklm-heart ${li >= p.lives ? 'lost' : ''}`}>
+                      ♥
+                    </span>
+                  ))}
+                </div>
+                {isCurrent && currentWord && (
+                  <span className="jklm-player-word">{currentWord}</span>
+                )}
               </div>
             );
           })}
 
-          {/* Sıra oku: bombanın ortasından mevcut oyuncu yönüne */}
-          {currentPlayerIndex >= 0 && (
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none animate-turn-arrow animate-arrow-pulse drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]"
-              viewBox={`0 0 ${arenaSize} ${arenaSize}`}
-            >
-              <defs>
-                <marker
-                  id="arrowhead-game"
-                  markerWidth="16"
-                  markerHeight="12"
-                  refX="13"
-                  refY="6"
-                  orient="auto"
-                >
-                  <polygon points="0 0, 16 6, 0 12" fill="#eab308" stroke="#b45309" strokeWidth="0.5" />
-                </marker>
-                <filter id="arrowShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#000" floodOpacity="0.4" />
-                </filter>
-              </defs>
-              <line
-                x1={center}
-                y1={center}
-                x2={center + (playerRadius - 42) * Math.cos(arrowAngle)}
-                y2={center + (playerRadius - 42) * Math.sin(arrowAngle)}
-                stroke="#eab308"
-                strokeWidth="7"
-                strokeLinecap="round"
-                markerEnd="url(#arrowhead-game)"
-                filter="url(#arrowShadow)"
-              />
-            </svg>
-          )}
-
-          {/* Ortada bomba + hece */}
-          <div
-            className={`absolute left-1/2 top-1/2 flex flex-col items-center justify-center origin-center ${
-              timerUrgent ? 'animate-bomb-pulse-urgent' : 'animate-bomb-pulse'
-            }`}
-            style={{
-              width: BOMB_RADIUS * 2,
-              height: BOMB_RADIUS * 2,
-              marginLeft: -BOMB_RADIUS,
-              marginTop: -BOMB_RADIUS,
-            }}
-          >
-            <div className="relative flex items-center justify-center">
+          {/* Turn arrow from center to current player */}
+          {arrowTarget && currentPlayerIndex >= 0 && (
+            <>
               <svg
-                width={BOMB_RADIUS * 2}
-                height={BOMB_RADIUS * 2}
-                viewBox="0 0 104 104"
-                className="drop-shadow-lg"
+                className="jklm-turn-arrow animate-arrow-pulse"
+                viewBox={`0 0 ${arenaSize.w} ${arenaSize.h}`}
+                preserveAspectRatio="none"
+                style={{ width: arenaSize.w, height: arenaSize.h }}
               >
                 <defs>
-                  <radialGradient id="bombGrad" cx="0.35" cy="0.35" r="0.7">
-                    <stop offset="0%" stopColor="#4a4541" />
-                    <stop offset="100%" stopColor="#2a2520" />
-                  </radialGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="1" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
+                  <marker
+                    id="arrowhead-jklm"
+                    markerWidth="14"
+                    markerHeight="10"
+                    refX="11"
+                    refY="5"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 14 5, 0 10" fill="#eab308" stroke="#b45309" strokeWidth="0.5" />
+                  </marker>
+                  <filter id="arrowGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#eab308" floodOpacity="0.4" />
                   </filter>
                 </defs>
-                <ellipse cx="44" cy="52" rx="38" ry="42" fill="url(#bombGrad)" stroke="#3a3530" strokeWidth="2" />
-                <path
-                  d="M 82 38 Q 100 30 98 44 Q 96 52 90 48"
-                  fill="none"
-                  stroke="#5a5550"
-                  strokeWidth="4"
+                <line
+                  x1={cx}
+                  y1={cy}
+                  x2={cx + arrowLength * Math.cos(arrowAngle)}
+                  y2={cy + arrowLength * Math.sin(arrowAngle)}
+                  stroke="#eab308"
+                  strokeWidth="6"
                   strokeLinecap="round"
+                  markerEnd="url(#arrowhead-jklm)"
+                  filter="url(#arrowGlow)"
                 />
-                <circle cx="94" cy="42" r="4" fill="#eab308" filter="url(#glow)" />
               </svg>
+              {/* Star near the arrow tip */}
               <div
-                className="absolute inset-0 flex items-center justify-center rounded-full bomb-syllable-disk"
-                style={{ width: 76, height: 76, left: '50%', top: '50%', marginLeft: -38, marginTop: -38 }}
+                className="jklm-star"
+                style={{
+                  left: cx + (arrowLength * 0.55) * Math.cos(arrowAngle) - 9,
+                  top: cy + (arrowLength * 0.55) * Math.sin(arrowAngle) - 18,
+                }}
               >
-                <span className="text-white font-bold text-3xl tracking-widest uppercase drop-shadow-sm">
-                  {gameState.currentSyllable?.toLocaleLowerCase('tr-TR') ?? '—'}
-                </span>
+                ⭐
               </div>
+            </>
+          )}
+
+          {/* Center bomb / syllable */}
+          <div
+            className={`jklm-bomb-center ${timerUrgent ? 'animate-bomb-pulse-urgent' : 'animate-bomb-pulse'}`}
+          >
+            <div className="jklm-syllable-box">
+              <span className="jklm-syllable-text">
+                {gameState.currentSyllable?.toLocaleUpperCase('tr-TR') ?? '—'}
+              </span>
             </div>
-            {timerSecs !== null && (
-              <p
-                key={timerSecs}
-                className="text-red-400 font-mono text-lg font-bold mt-2 animate-timer-tick tabular-nums min-w-[2.5rem] text-center"
-              >
-                {timerSecs}s
-              </p>
-            )}
           </div>
         </div>
 
-        {turnNoticeVisible && isMyTurn && (
-          <p className="mt-4 px-6 py-2.5 rounded-full bg-amber-500/25 border border-amber-400/60 text-amber-200 font-semibold animate-pulse text-base shadow-lg shadow-amber-900/20">
-            Sıra sende!
-          </p>
-        )}
-
+        {/* Feedback */}
         {lastWordResult && (
-          <p
-            className={`mt-3 text-lg font-medium animate-feedback-pop ${
-              lastWordResult.ok ? 'text-emerald-400' : 'text-red-400'
-            }`}
+          <div
+            className="animate-feedback-pop"
+            style={{
+              position: 'absolute',
+              bottom: 60,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 16,
+              fontWeight: 600,
+              color: lastWordResult.ok ? 'var(--jklm-green)' : '#ef4444',
+              zIndex: 10,
+              textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+            }}
           >
-            {lastWordResult.ok ? 'Doğru!' : lastWordResult.error}
-          </p>
+            {lastWordResult.ok ? 'Correct!' : lastWordResult.error}
+          </div>
         )}
+      </div>
 
-        {isMyTurn && (
-          <form onSubmit={handleSubmit} className="flex gap-3 mt-5 shrink-0 w-full max-w-sm">
+      {/* ===== RIGHT SIDEBAR ===== */}
+      <aside className="jklm-sidebar">
+        {/* Player stats table */}
+        <div style={{ overflow: 'auto', maxHeight: '40%' }}>
+          <table className="jklm-stats-table">
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', paddingLeft: 8 }}>Username</th>
+                <th>Words</th>
+                <th>HP</th>
+                <th>Lives</th>
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((p: Player) => {
+                const isCurrent = p.socketId === gameState.currentPlayerId;
+                return (
+                  <tr
+                    key={p.socketId}
+                    className={`${isCurrent ? 'current-row' : ''} ${p.isEliminated ? 'eliminated-row' : ''}`}
+                  >
+                    <td className="jklm-stats-username" style={{ paddingLeft: 8 }}>
+                      {p.nickname?.trim() ?? p.socketId.slice(0, 8)}
+                    </td>
+                    <td>{p.wordsFound ?? p.score ?? 0}</td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        width: 20,
+                        height: 8,
+                        borderRadius: 4,
+                        background: p.isEliminated
+                          ? '#444'
+                          : p.lives >= 3 ? 'var(--jklm-green)' : p.lives >= 2 ? 'var(--jklm-gold)' : '#ef4444',
+                      }} />
+                    </td>
+                    <td>{p.isEliminated ? '💀' : p.lives}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Action icons row */}
+        <div className="jklm-sidebar-actions">
+          <button type="button" title="Sound">🔊</button>
+          <button type="button" title="Grid">⊞</button>
+          <button type="button" title="Stats">📊</button>
+          <button type="button" title="Lock">🔒</button>
+        </div>
+
+        {/* Alphabet grid */}
+        <div style={{ padding: '4px 8px' }}>
+          <div className="jklm-alphabet-grid">
+            {ALPHABET.map(letter => {
+              const used = myUsedLetters.has(letter);
+              return (
+                <div key={letter} className="jklm-alpha-row">
+                  <span className={`jklm-alpha-letter ${used ? 'used' : 'unused'}`}>
+                    {letter}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Chat */}
+        <div className="jklm-chat">
+          <div className="jklm-chat-messages">
+            {chatMessages.length === 0 && (
+              <div style={{ color: 'var(--jklm-text-muted)', fontSize: 11, padding: '4px 0' }}>
+                Game started...
+              </div>
+            )}
+            {chatMessages.map(msg => (
+              <div key={msg.id} className={`jklm-chat-msg ${msg.type}`}>
+                <span className="time">
+                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {msg.type === 'chat' && <span className="name">{msg.sender}</span>}
+                <span className="text">{msg.text}</span>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+          <form className="jklm-chat-input" onSubmit={handleChatSubmit}>
             <input
-              onFocus={scrollGameAreaIntoView}
               type="text"
-              value={word}
-              onChange={(e) => setWord(e.target.value)}
-              placeholder="Kelime yaz..."
-              autoComplete="off"
-              className="flex-1 px-4 py-3 rounded-xl bg-gray-800/90 border border-gray-600 text-white text-base placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/50 transition-shadow disabled:opacity-60"
-              disabled={submitting}
+              placeholder="Type here to chat..."
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
             />
+          </form>
+        </div>
+      </aside>
+
+      {/* ===== BOTTOM BAR ===== */}
+      <div className="jklm-bottom-bar">
+        {isMyTurn && (
+          <span style={{
+            background: 'var(--jklm-gold)',
+            color: 'var(--jklm-bg-darker)',
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '3px 8px',
+            borderRadius: 4,
+            whiteSpace: 'nowrap',
+            animation: 'timerBlink 0.8s ease-in-out infinite alternate',
+          }}>
+            YOUR TURN
+          </span>
+        )}
+        <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', gap: 8, maxWidth: 540, margin: '0 auto' }}>
+          <input
+            ref={wordInputRef}
+            type="text"
+            className="jklm-word-input"
+            value={word}
+            onChange={e => setWord(e.target.value)}
+            placeholder={isMyTurn ? 'Type a word...' : 'Waiting for your turn...'}
+            disabled={!isMyTurn || submitting}
+            autoComplete="off"
+            autoFocus
+          />
+          {isMyTurn && (
             <button
               type="submit"
               disabled={submitting || !word.trim()}
-              className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-base font-semibold text-white border border-emerald-500/30 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-colors"
+              style={{
+                background: 'var(--jklm-green)',
+                color: 'var(--jklm-bg-darker)',
+                border: 'none',
+                borderRadius: 6,
+                padding: '0 20px',
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: 'pointer',
+                opacity: submitting || !word.trim() ? 0.5 : 1,
+                transition: 'opacity 0.15s',
+              }}
             >
-              Gönder
+              Send
             </button>
-          </form>
-        )}
+          )}
+        </form>
       </div>
     </div>
   );

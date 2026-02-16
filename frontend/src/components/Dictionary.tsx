@@ -18,17 +18,17 @@ export function Dictionary({ onBack }: Props) {
     setError(null);
     try {
       const res = await fetch(getDictionaryUrl(p, PAGE_SIZE));
-      if (!res.ok) throw new Error('Yüklenemedi');
+      if (!res.ok) throw new Error('Failed to load');
       const contentType = res.headers.get('content-type') ?? '';
       if (!contentType.includes('application/json')) {
-        throw new Error('API JSON yerine HTML döndü. Backend/proxy ayarını kontrol et.');
+        throw new Error('API returned non-JSON. Check backend/proxy config.');
       }
       const data = await res.json();
       setWords(data.words ?? []);
       setTotal(data.total ?? 0);
       setPage(p);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Bir hata oluştu');
+      setError(e instanceof Error ? e.message : 'An error occurred');
       setWords([]);
     } finally {
       setLoading(false);
@@ -41,67 +41,98 @@ export function Dictionary({ onBack }: Props) {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const searchLower = search.trim().toLowerCase();
-  const filtered =
-    searchLower.length > 0
-      ? words.filter((w) => w.toLowerCase().includes(searchLower))
-      : words;
+  const filtered = searchLower.length > 0
+    ? words.filter((w) => w.toLowerCase().includes(searchLower))
+    : words;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col p-4">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h1 className="text-2xl font-bold">Sözlük</h1>
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 shrink-0"
-        >
-          Ana menüye dön
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--jklm-bg)',
+      color: 'var(--jklm-text)',
+      display: 'flex',
+      flexDirection: 'column',
+      padding: 20,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: 0 }}>Dictionary</h1>
+        <button type="button" className="jklm-lobby-btn-secondary" onClick={onBack}>
+          Back to Menu
         </button>
       </div>
+
       <input
         type="text"
-        placeholder="Kelime ara..."
+        placeholder="Search words..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 px-3 py-2 rounded bg-gray-800 border border-gray-600 text-white w-full max-w-md"
+        style={{
+          marginBottom: 16,
+          background: 'var(--jklm-bg-darker)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 6,
+          padding: '10px 14px',
+          fontSize: 14,
+          color: 'white',
+          outline: 'none',
+          maxWidth: 400,
+          width: '100%',
+        }}
       />
+
       {error && (
-        <p className="text-red-400 text-sm mb-2">{error}</p>
+        <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>{error}</p>
       )}
+
       {loading ? (
-        <p className="text-gray-400">Yükleniyor...</p>
+        <p style={{ color: 'var(--jklm-text-muted)' }}>Loading...</p>
       ) : (
         <>
-          <p className="text-gray-400 text-sm mb-2">
-            {search ? `${filtered.length} eşleşme` : `Toplam ${total} kelime`}
+          <p style={{ color: 'var(--jklm-text-muted)', fontSize: 12, marginBottom: 8 }}>
+            {search ? `${filtered.length} matches` : `Total: ${total} words`}
           </p>
-          <ul className="flex-1 overflow-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 text-sm list-none">
+          <div style={{
+            flex: 1,
+            overflow: 'auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+            gap: 2,
+            fontSize: 13,
+          }}>
             {filtered.map((w) => (
-              <li key={w} className="truncate py-0.5 text-gray-200">
+              <div key={w} style={{
+                padding: '3px 6px',
+                color: 'var(--jklm-text)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
                 {w}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
           {!search && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 }}>
               <button
                 type="button"
+                className="jklm-lobby-btn-secondary"
                 onClick={() => loadPage(page - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ opacity: page <= 1 ? 0.5 : 1 }}
               >
-                Önceki
+                Previous
               </button>
-              <span className="text-gray-400 text-sm">
+              <span style={{ color: 'var(--jklm-text-muted)', fontSize: 13 }}>
                 {page} / {totalPages}
               </span>
               <button
                 type="button"
+                className="jklm-lobby-btn-secondary"
                 onClick={() => loadPage(page + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ opacity: page >= totalPages ? 0.5 : 1 }}
               >
-                Sonraki
+                Next
               </button>
             </div>
           )}

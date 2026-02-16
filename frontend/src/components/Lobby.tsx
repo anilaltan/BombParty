@@ -34,30 +34,17 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
     setActionError(null);
     clearLastError();
     const name = nickname.trim();
-    if (!name) {
-      setActionError('Please enter a nickname');
-      return;
-    }
-    if (!socket) {
-      setActionError('Not connected');
-      return;
-    }
+    if (!name) { setActionError('Please enter a nickname'); return; }
+    if (!socket) { setActionError('Not connected'); return; }
     const parsedFixed = Number(fixedSeconds);
     const parsedMin = Number(minSeconds);
     const parsedMax = Number(maxSeconds);
     if (timeMode === 'fixed' && (!Number.isFinite(parsedFixed) || parsedFixed < 3 || parsedFixed > 60)) {
-      setActionError('Sabit sure 3-60 saniye olmali');
+      setActionError('Fixed time must be 3-60 seconds');
       return;
     }
-    if (
-      timeMode === 'range' &&
-      (!Number.isFinite(parsedMin) ||
-        !Number.isFinite(parsedMax) ||
-        parsedMin < 3 ||
-        parsedMax > 60 ||
-        parsedMin > parsedMax)
-    ) {
-      setActionError('Aralik 3-60 olmali ve min <= max olmali');
+    if (timeMode === 'range' && (!Number.isFinite(parsedMin) || !Number.isFinite(parsedMax) || parsedMin < 3 || parsedMax > 60 || parsedMin > parsedMax)) {
+      setActionError('Range must be 3-60 and min <= max');
       return;
     }
     setCreating(true);
@@ -85,15 +72,9 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
 
   const handleJoinRoom = () => {
     const code = roomCode.trim().toUpperCase();
-    if (!code) {
-      setActionError('Enter room code');
-      return;
-    }
+    if (!code) { setActionError('Enter room code'); return; }
     const name = nickname.trim();
-    if (!name) {
-      setActionError('Please enter a nickname');
-      return;
-    }
+    if (!name) { setActionError('Please enter a nickname'); return; }
     setActionError(null);
     clearLastError();
     socket?.emit(EVENTS.JOIN_ROOM, { roomId: code, nickname: name, avatarId: selectedAvatarId }, (res: { ok?: boolean; error?: string }) => {
@@ -119,192 +100,278 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
 
   if (!connected) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-        <p className="text-amber-400">Connecting to server...</p>
+      <div className="jklm-lobby">
+        <p style={{ color: 'var(--jklm-gold)' }}>Connecting to server...</p>
       </div>
     );
   }
 
+  // Pre-room: Create or Join
   if (!roomId) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-4">
-        <h1 className="text-3xl font-bold">Word Bomb</h1>
-        <input
-          type="text"
-          placeholder="Nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          className="px-3 py-2 rounded bg-gray-800 border border-gray-600 text-white w-64"
-        />
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-gray-400 text-sm">Avatar</span>
-          <div className="flex gap-2 flex-wrap justify-center max-w-[16rem]">
-            {AVATAR_OPTIONS.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => setSelectedAvatarId(a.id)}
-                className={`w-10 h-10 rounded-full text-xl flex items-center justify-center border-2 transition ${
-                  selectedAvatarId === a.id ? 'border-emerald-500 bg-gray-700' : 'border-gray-600 hover:border-gray-500'
-                }`}
-                title={a.id}
-              >
-                {a.emoji}
-              </button>
-            ))}
+      <div className="jklm-lobby">
+        <h1>
+          <span className="jklm-lobby-title-accent">Bomb</span>Party
+        </h1>
+        <p style={{ color: 'var(--jklm-text-muted)', fontSize: 13, marginTop: -8, textAlign: 'center' }}>
+          Word game — type words containing the syllable before time runs out!
+        </p>
+
+        <div className="jklm-lobby-card">
+          {/* Nickname */}
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--jklm-text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              Nickname
+            </label>
+            <input
+              type="text"
+              placeholder="Enter your name..."
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+            />
           </div>
-        </div>
-        <div className="flex flex-col gap-2 items-center">
-          <div className="w-64 rounded border border-gray-700 bg-gray-800/50 p-3 text-sm space-y-2">
-            <p className="text-gray-300 font-medium">Tur suresi</p>
-            <div className="flex gap-2">
+
+          {/* Avatar picker */}
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--jklm-text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Avatar
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {AVATAR_OPTIONS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setSelectedAvatarId(a.id)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 8,
+                    fontSize: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: selectedAvatarId === a.id ? '2px solid var(--jklm-gold)' : '2px solid rgba(255,255,255,0.1)',
+                    background: selectedAvatarId === a.id ? 'rgba(234,179,8,0.1)' : 'var(--jklm-bg-darker)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {a.emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Turn time settings */}
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--jklm-text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Turn Duration
+            </label>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
               <button
                 type="button"
                 onClick={() => setTimeMode('fixed')}
-                className={`flex-1 rounded px-2 py-1 ${
-                  timeMode === 'fixed' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '6px 0',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: timeMode === 'fixed' ? 'var(--jklm-gold)' : 'rgba(255,255,255,0.06)',
+                  color: timeMode === 'fixed' ? 'var(--jklm-bg-darker)' : 'var(--jklm-text-muted)',
+                  transition: 'all 0.15s',
+                }}
               >
-                Sabit
+                Fixed
               </button>
               <button
                 type="button"
                 onClick={() => setTimeMode('range')}
-                className={`flex-1 rounded px-2 py-1 ${
-                  timeMode === 'range' ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '6px 0',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: timeMode === 'range' ? 'var(--jklm-gold)' : 'rgba(255,255,255,0.06)',
+                  color: timeMode === 'range' ? 'var(--jklm-bg-darker)' : 'var(--jklm-text-muted)',
+                  transition: 'all 0.15s',
+                }}
               >
-                Aralik
+                Range
               </button>
             </div>
             {timeMode === 'fixed' ? (
-              <label className="flex items-center justify-between gap-2">
-                <span className="text-gray-400">Saniye</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--jklm-text-muted)' }}>Seconds</span>
                 <input
                   type="number"
                   min={3}
                   max={60}
                   value={fixedSeconds}
                   onChange={(e) => setFixedSeconds(e.target.value)}
-                  className="w-24 px-2 py-1 rounded bg-gray-900 border border-gray-600 text-white"
+                  style={{ width: 80, textAlign: 'center' }}
                 />
-              </label>
+              </div>
             ) : (
-              <div className="flex gap-2">
-                <label className="flex-1 flex items-center justify-between gap-2">
-                  <span className="text-gray-400">Min</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, color: 'var(--jklm-text-muted)' }}>Min</span>
                   <input
                     type="number"
                     min={3}
                     max={60}
                     value={minSeconds}
                     onChange={(e) => setMinSeconds(e.target.value)}
-                    className="w-20 px-2 py-1 rounded bg-gray-900 border border-gray-600 text-white"
+                    style={{ width: '100%', textAlign: 'center' }}
                   />
-                </label>
-                <label className="flex-1 flex items-center justify-between gap-2">
-                  <span className="text-gray-400">Max</span>
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, color: 'var(--jklm-text-muted)' }}>Max</span>
                   <input
                     type="number"
                     min={3}
                     max={60}
                     value={maxSeconds}
                     onChange={(e) => setMaxSeconds(e.target.value)}
-                    className="w-20 px-2 py-1 rounded bg-gray-900 border border-gray-600 text-white"
+                    style={{ width: '100%', textAlign: 'center' }}
                   />
-                </label>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Create button */}
           <button
             type="button"
+            className="jklm-lobby-btn-primary"
             onClick={handleCreateRoom}
             disabled={creating}
-            className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {creating ? 'Creating…' : 'Create Room'}
+            {creating ? 'Creating...' : 'Start a New Room'}
           </button>
-        </div>
-        <p className="text-gray-400 text-sm">Join or rejoin with room code</p>
-        <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            placeholder="Room code"
-            value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-            maxLength={6}
-            className="px-3 py-2 rounded bg-gray-800 border border-gray-600 text-white w-32 uppercase"
-          />
-          <button
-            type="button"
-            onClick={handleJoinRoom}
-            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500"
-          >
-            Join
-          </button>
-        </div>
-        <div className="flex gap-2 mt-2">
-          {onOpenSettings && (
+
+          {/* Divider */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            color: 'var(--jklm-text-muted)',
+            fontSize: 12,
+          }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--jklm-border)' }} />
+            <span>or join existing</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--jklm-border)' }} />
+          </div>
+
+          {/* Join room */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              placeholder="Room code"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              maxLength={6}
+              style={{ textTransform: 'uppercase', letterSpacing: 2, textAlign: 'center', fontWeight: 700 }}
+            />
             <button
               type="button"
-              onClick={onOpenSettings}
-              className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-sm"
+              className="jklm-lobby-btn-secondary"
+              onClick={handleJoinRoom}
+              style={{ whiteSpace: 'nowrap' }}
             >
-              Ayarlar
+              Join
+            </button>
+          </div>
+        </div>
+
+        {/* Utility buttons */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onOpenSettings && (
+            <button type="button" className="jklm-lobby-btn-secondary" onClick={onOpenSettings}>
+              Settings
             </button>
           )}
           {onOpenDictionary && (
-            <button
-              type="button"
-              onClick={onOpenDictionary}
-              className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-sm"
-            >
-              Sözlük
+            <button type="button" className="jklm-lobby-btn-secondary" onClick={onOpenDictionary}>
+              Dictionary
             </button>
           )}
         </div>
-        {err && <p className="text-red-400 text-sm">{err}</p>}
+
+        {err && (
+          <p style={{ color: '#ef4444', fontSize: 13, textAlign: 'center' }}>{err}</p>
+        )}
       </div>
     );
   }
 
+  // In-room: waiting for game start
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-4">
-      <h1 className="text-2xl font-bold">Room {roomId}</h1>
-      <p className="text-gray-400 text-sm">Share this code to invite others.</p>
-      <ul className="list-none space-y-1 w-64">
+    <div className="jklm-room-view">
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ color: 'var(--jklm-text-muted)', fontSize: 13, marginBottom: 4 }}>Room Code</p>
+        <div className="jklm-room-code">{roomId}</div>
+        <p style={{ color: 'var(--jklm-text-muted)', fontSize: 12, marginTop: 4 }}>
+          Share this code to invite others
+        </p>
+      </div>
+
+      <div style={{ width: '100%', maxWidth: 360 }}>
         {players.map((p: Player) => (
-          <li key={p.socketId} className="flex justify-between items-center py-1 border-b border-gray-700 gap-2">
-            <span className="flex items-center gap-2">
-              <span className="text-lg">{getAvatarEmoji(p.avatarId)}</span>
-              {p.nickname || p.socketId.slice(0, 6)}
+          <div key={p.socketId} className="jklm-player-list-item">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 24 }}>{getAvatarEmoji(p.avatarId)}</span>
+              <div>
+                <div style={{ fontWeight: 600, color: 'var(--jklm-text)' }}>
+                  {p.nickname || p.socketId.slice(0, 8)}
+                </div>
+                {p.isHost && (
+                  <span style={{ fontSize: 10, color: 'var(--jklm-gold)', fontWeight: 700 }}>HOST</span>
+                )}
+              </div>
+            </div>
+            <span className={`jklm-ready-badge ${p.ready ? 'ready' : 'not-ready'}`}>
+              {p.ready ? 'Ready' : 'Not Ready'}
             </span>
-            <span className="text-sm text-gray-400">
-              {p.isHost && 'Host'}
-              {p.ready && ' · Ready'}
-            </span>
-          </li>
+          </div>
         ))}
-      </ul>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={isReady}
-          onChange={(e) => handleSetReady(e.target.checked)}
-          className="rounded"
-        />
-        Ready
-      </label>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button
+          type="button"
+          className="jklm-lobby-btn-secondary"
+          onClick={() => handleSetReady(!isReady)}
+          style={{
+            background: isReady ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.08)',
+            borderColor: isReady ? 'rgba(74,222,128,0.3)' : 'var(--jklm-border)',
+            color: isReady ? 'var(--jklm-green)' : 'var(--jklm-text)',
+          }}
+        >
+          {isReady ? '✓ Ready' : 'Click to Ready Up'}
+        </button>
+      </div>
+
       {isHost && (
         <button
+          type="button"
+          className="jklm-lobby-btn-primary"
           onClick={handleStartGame}
           disabled={!canStart}
-          className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ maxWidth: 240 }}
         >
           Start Game
         </button>
       )}
-      {err && <p className="text-red-400 text-sm">{err}</p>}
+
+      {err && (
+        <p style={{ color: '#ef4444', fontSize: 13 }}>{err}</p>
+      )}
     </div>
   );
 }

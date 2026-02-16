@@ -6,25 +6,51 @@ export function Settings({ onBack }: Props) {
   const { soundEnabled, setSoundEnabled } = useSettings();
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 gap-6">
-      <h1 className="text-2xl font-bold">Ayarlar</h1>
-      <div className="w-64 space-y-4">
-        <label className="flex items-center justify-between gap-4 cursor-pointer">
-          <span>Ses</span>
-          <input
-            type="checkbox"
-            checked={soundEnabled}
-            onChange={(e) => setSoundEnabled(e.target.checked)}
-            className="rounded w-5 h-5 accent-emerald-500"
-          />
+    <div className="jklm-lobby">
+      <h1 style={{ fontSize: 24, fontWeight: 800, color: 'white' }}>Settings</h1>
+      <div className="jklm-lobby-card" style={{ maxWidth: 360 }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          cursor: 'pointer',
+          fontSize: 14,
+          color: 'var(--jklm-text)',
+        }}>
+          <span>Sound Effects</span>
+          <div
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            style={{
+              width: 44,
+              height: 24,
+              borderRadius: 12,
+              background: soundEnabled ? 'var(--jklm-green)' : 'rgba(255,255,255,0.12)',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >
+            <div style={{
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: 'white',
+              position: 'absolute',
+              top: 3,
+              left: soundEnabled ? 23 : 3,
+              transition: 'left 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }} />
+          </div>
         </label>
       </div>
       <button
         type="button"
+        className="jklm-lobby-btn-secondary"
         onClick={onBack}
-        className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500"
       >
-        Ana menüye dön
+        Back to Menu
       </button>
     </div>
   );
