@@ -1,6 +1,7 @@
 services:
   backend:
-    image: bombparty-backend   # İnternetten değil, az önce bizim yarattığımız imaj
+    build: ./backend
+    image: bombparty-backend
     container_name: bombparty-backend
     restart: always
     environment:
@@ -10,7 +11,8 @@ services:
       - "3001:3001"
 
   frontend:
-    image: bombparty-frontend  # Bizim yarattığımız frontend imajı
+    build: ./frontend
+    image: bombparty-frontend
     container_name: bombparty-frontend
     restart: always
     ports:
