@@ -18,6 +18,9 @@ const DEFAULT_TURN_DURATION_MS = Number(process.env.TURN_DURATION_MS) > 0 ? Numb
 const MIN_TURN_DURATION_MS = 3000;
 const MAX_TURN_DURATION_MS = 60000;
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const MAX_PLAYERS = 12;
+const MAX_NICKNAME_LENGTH = 20;
+const MAX_WORD_LENGTH = 64;
 
 /**
  * @typedef {Object} GamePlayer
@@ -146,6 +149,8 @@ function broadcastGameState(io, roomId) {
     usedWords: room.usedWords ?? [],
     currentPlayerId: currentPlayer?.disconnected ? null : (currentPlayer?.socketId ?? null),
     turnDurationMs: room.currentTurnDurationMs ?? null,
+    // Absolute server timestamp so clients don't drift due to network latency
+    turnExpiresAt: room.turnExpiresAt ?? null,
     players: activePlayers.map((p) => ({
       socketId: p.socketId,
       nickname: p.nickname,
@@ -215,6 +220,7 @@ function handleBombExploded(io, roomId) {
     }));
     io.to(roomId).emit(EVENTS.GAME_END, { winner: winner?.socketId ?? null, players: finalScores });
     room.status = 'waiting';
+    room.turnExpiresAt = null;
     return;
   }
   const nextIdx = getNextTurnIndex(room);
@@ -241,6 +247,7 @@ function startNextTurn(io, roomId) {
   }
   room.currentAttempt = '';
   room.currentTurnDurationMs = getTurnDurationMs(room);
+  room.turnExpiresAt = Date.now() + room.currentTurnDurationMs;
   room.turnTimer = createTurnTimer({
     durationMs: room.currentTurnDurationMs,
     graceMs: GRACE_MS,
@@ -290,10 +297,19 @@ function markPlayerDisconnected(socket) {
     player.disconnected = true;
     if (room.hostId === socket.id) {
       const nextHost = room.players.find((p) => p.socketId !== socket.id && !p.disconnected);
-      room.hostId = nextHost?.socketId ?? room.hostId;
+      // If no active player can take over, set null so the room is known to be host-less
+      room.hostId = nextHost?.socketId ?? null;
     }
   }
   socketToRoom.delete(socket.id);
+
+  // Clean up rooms where every player has disconnected
+  const anyConnected = room.players.some((p) => !p.disconnected);
+  if (!anyConnected) {
+    if (room.turnTimer) room.turnTimer.cancel();
+    rooms.delete(roomId);
+  }
+
   return roomId;
 }
 
@@ -310,6 +326,10 @@ export function attachSocketHandlers(io) {
       const turnTimerConfig = resolveTurnTimerConfig(payload?.turnTime);
       if (!nickname) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Nickname required' });
+        return;
+      }
+      if (nickname.length > MAX_NICKNAME_LENGTH) {
+        if (typeof cb === 'function') cb({ ok: false, error: `Nickname must be ${MAX_NICKNAME_LENGTH} characters or fewer` });
         return;
       }
       if (!turnTimerConfig) {
@@ -367,6 +387,10 @@ export function attachSocketHandlers(io) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Nickname required' });
         return;
       }
+      if (nickname.length > MAX_NICKNAME_LENGTH) {
+        if (typeof cb === 'function') cb({ ok: false, error: `Nickname must be ${MAX_NICKNAME_LENGTH} characters or fewer` });
+        return;
+      }
       if (isProfane(nickname)) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Nickname not allowed' });
         return;
@@ -403,6 +427,12 @@ export function attachSocketHandlers(io) {
       );
       if (alreadyInRoom) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Nickname already in use' });
+        return;
+      }
+
+      const activePlayers = room.players.filter((p) => !p.disconnected);
+      if (activePlayers.length >= MAX_PLAYERS) {
+        if (typeof cb === 'function') cb({ ok: false, error: `Room is full (max ${MAX_PLAYERS} players)` });
         return;
       }
 
@@ -467,23 +497,27 @@ export function attachSocketHandlers(io) {
         if (typeof cb === 'function') cb({ ok: false, error: 'All players must be ready (min 2 players)' });
         return;
       }
+      // Fetch syllable before mutating room state so we can abort cleanly if pool is empty
+      let firstSyllable;
+      try {
+        firstSyllable = getRandomSyllable();
+      } catch {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Syllable pool not ready' });
+        return;
+      }
+      // Set status first so any concurrent START_GAME from another socket is rejected
+      room.status = 'playing';
       const lives = Number(process.env.DEFAULT_LIVES) || DEFAULT_LIVES;
       room.players.forEach((p) => {
         p.lives = lives;
         p.score = 0;
         p.isEliminated = false;
       });
-      room.status = 'playing';
       room.currentTurnIndex = getFirstActiveTurnIndex(room);
       room.currentAttempt = '';
       room.usedWords = [];
       room.currentTurnDurationMs = getTurnDurationMs(room);
-      try {
-        room.currentSyllable = getRandomSyllable();
-      } catch (e) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Syllable pool not ready' });
-        return;
-      }
+      room.currentSyllable = firstSyllable;
       if (typeof cb === 'function') cb({ ok: true });
       broadcastPlayerList(io, roomId);
       broadcastGameState(io, roomId);
@@ -516,6 +550,10 @@ export function attachSocketHandlers(io) {
         return;
       }
       const raw = typeof payload?.word === 'string' ? payload.word.trim() : '';
+      if (raw.length > MAX_WORD_LENGTH || /[\x00-\x1f\x7f]/.test(raw)) {
+        reply({ ok: false, error: 'Invalid word' });
+        return;
+      }
       const syllable = room.currentSyllable ?? '';
       const result = validateWord(raw, syllable, room.usedWords ?? [], { has: dictionaryHas });
       if (!result.valid) {
@@ -559,7 +597,13 @@ export function attachSocketHandlers(io) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Not your turn' });
         return;
       }
-      const attempt = typeof payload?.word === 'string' ? payload.word.slice(0, 64) : '';
+      // Reject rather than silently truncate so clients stay consistent
+      const raw = typeof payload?.word === 'string' ? payload.word : '';
+      if (raw.length > MAX_WORD_LENGTH || /[\x00-\x1f\x7f]/.test(raw)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Invalid word' });
+        return;
+      }
+      const attempt = raw;
       room.currentAttempt = attempt;
       io.to(roomId).emit(EVENTS.WORD_ATTEMPT, {
         playerId: socket.id,

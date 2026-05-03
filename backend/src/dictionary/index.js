@@ -27,7 +27,12 @@ function normalizeDictWord(w) {
 
 export async function loadDictionary(filePath = DEFAULT_PATH) {
   const raw = await readFile(filePath, 'utf8');
-  const arr = JSON.parse(raw);
+  let arr;
+  try {
+    arr = JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`Dictionary file at ${filePath} is not valid JSON: ${e.message}`);
+  }
   if (!Array.isArray(arr)) throw new Error('Dictionary JSON must be an array of strings');
   const normalized = arr.map(normalizeDictWord).filter(Boolean);
   wordSet = new Set(normalized);

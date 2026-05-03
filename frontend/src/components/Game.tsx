@@ -36,7 +36,6 @@ export function Game() {
   const [timerMs, setTimerMs] = useState<number | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const [myUsedLetters, setMyUsedLetters] = useState<Set<string>>(new Set());
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endAtRef = useRef<number | null>(null);
@@ -123,8 +122,10 @@ export function Game() {
       endAtRef.current = null;
       return;
     }
-    const turnDurationMs = gameState.turnDurationMs ?? DEFAULT_TURN_DURATION_MS;
-    const endAt = Date.now() + turnDurationMs;
+    // Prefer server's absolute expiry timestamp to avoid client-side clock drift
+    const endAt = gameState.turnExpiresAt
+      ? gameState.turnExpiresAt
+      : Date.now() + (gameState.turnDurationMs ?? DEFAULT_TURN_DURATION_MS);
     endAtRef.current = endAt;
     lastTickAtRef.current = Date.now();
     const isMyTurnForTick = gameState.currentPlayerId === socket?.id;
@@ -151,7 +152,7 @@ export function Game() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [gameState?.status, gameState?.currentPlayerId, gameState?.currentSyllable, socket?.id, playTick, soundEnabled]);
+  }, [gameState?.status, gameState?.currentPlayerId, gameState?.currentSyllable, gameState?.turnExpiresAt, socket?.id, playTick, soundEnabled]);
 
   // Flash feedback
   useEffect(() => {
@@ -163,15 +164,6 @@ export function Game() {
     }
     setValidFlash(true);
     if (soundEnabled) playDing();
-    // Track used letters from accepted word
-    if (lastWordResult.word) {
-      const letters = new Set(lastWordResult.word.toUpperCase().split('').filter(c => /[A-ZÇĞIİÖŞÜ]/.test(c)));
-      setMyUsedLetters(prev => {
-        const next = new Set(prev);
-        letters.forEach(l => next.add(l));
-        return next;
-      });
-    }
     const t = setTimeout(() => setValidFlash(false), 500);
     return () => clearTimeout(t);
   }, [lastWordResult, playDing, soundEnabled]);
@@ -229,6 +221,17 @@ export function Game() {
     setChatMessages(prev => [...prev.slice(-100), msg]);
     setChatInput('');
   };
+
+  // Letters used in the current round across all players, derived from server state
+  const roundUsedLetters = useMemo(() => {
+    const s = new Set<string>();
+    for (const w of gameState?.usedWords ?? []) {
+      for (const c of w.toUpperCase()) {
+        if (/[A-ZÇĞIİÖŞÜ]/.test(c)) s.add(c);
+      }
+    }
+    return s;
+  }, [gameState?.usedWords]);
 
   // Compute player layout positions
   const playerPositions = useMemo(() => {
@@ -563,7 +566,7 @@ export function Game() {
         <div style={{ padding: '4px 8px' }}>
           <div className="jklm-alphabet-grid">
             {ALPHABET.map(letter => {
-              const used = myUsedLetters.has(letter);
+              const used = roundUsedLetters.has(letter);
               return (
                 <div key={letter} className="jklm-alpha-row">
                   <span className={`jklm-alpha-letter ${used ? 'used' : 'unused'}`}>

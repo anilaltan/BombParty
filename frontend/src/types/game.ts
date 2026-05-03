@@ -18,6 +18,8 @@ export interface GameState {
   usedWords: string[];
   currentPlayerId: string | null;
   turnDurationMs?: number;
+  /** Absolute server timestamp (ms since epoch) when the current turn expires */
+  turnExpiresAt?: number | null;
   players: Player[];
 }
 

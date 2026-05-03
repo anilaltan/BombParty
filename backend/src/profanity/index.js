@@ -21,17 +21,33 @@ try {
   blacklist = Array.isArray(arr)
     ? arr.map((w) => normalizeTurkishLower(String(w))).filter(Boolean)
     : [];
-} catch {
+} catch (e) {
+  // Non-fatal: profanity filtering is best-effort, but log so operators know
+  console.warn('[profanity] Failed to load blacklist, filtering disabled:', e.message);
   blacklist = [];
 }
 
 /**
- * Returns true if the text contains any blacklisted term (substring match).
+ * Returns true if the text contains any blacklisted term.
+ * Uses Unicode word-boundary matching (\p{L}) to avoid false positives
+ * like "class" matching a blacklisted "ass".
  * @param {string} text - Raw input (username or message)
  * @returns {boolean}
  */
 export function isProfane(text) {
   if (typeof text !== 'string' || !text.trim()) return false;
   const normalized = normalizeTurkishLower(text);
-  return blacklist.some((term) => term && normalized.includes(term));
+  return blacklist.some((term) => {
+    if (!term) return false;
+    // Escape regex special chars in the term
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Use Unicode letter boundaries so "class" doesn't match "ass"
+    try {
+      const pattern = new RegExp(`(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'u');
+      return pattern.test(normalized);
+    } catch {
+      // Fallback to substring match if regex construction fails
+      return normalized.includes(term);
+    }
+  });
 }

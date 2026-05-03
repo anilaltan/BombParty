@@ -41,7 +41,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    } catch {
+      // Silently ignore — quota exceeded or storage disabled (e.g. private browsing)
+    }
   }, [settings]);
 
   const setSoundEnabled = useCallback((v: boolean) => {

@@ -3,6 +3,7 @@
  */
 import { createServer } from 'http';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { Server } from 'socket.io';
 import { loadDictionary, size, getWordList } from './dictionary/index.js';
 
@@ -15,7 +16,9 @@ const PORT = Number(process.env.PORT) || 3001;
 const app = express();
 
 const allowedOrigins = process.env.CORS_ORIGIN?.split(',').filter(Boolean);
-// CORS for HTTP (and Socket.IO long-polling handshake): reflect origin when unset so LAN/dev works
+// CORS for HTTP (and Socket.IO long-polling handshake).
+// WARNING: when CORS_ORIGIN is not set (local dev), any origin is reflected back.
+// Always set CORS_ORIGIN in production to avoid an open CORS policy.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins?.length) {
@@ -30,7 +33,15 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/dictionary', (req, res) => {
+const dictLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down.' },
+});
+
+app.get('/api/dictionary', dictLimiter, (req, res) => {
   try {
     const words = getWordList();
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -66,7 +77,7 @@ async function main() {
       : (envMin > 0 ? Math.min(envMin, wordCount) : defaultMin);
   initSyllablePool(getWordList(), minWordCount);
   const poolSize = getSyllablePoolSize();
-  if (poolSize === 0) throw new Error('Syllable pool empty; need more dictionary words or lower SYLLABLE_MIN_WORDS');
+  if (poolSize === 0) throw new Error('Syllable pool is empty. Lower SYLLABLE_MIN_WORDS env var or provide a larger dictionary.');
   console.log(`Syllable pool: ${poolSize} valid syllables`);
 
   httpServer.listen(PORT, () => {
