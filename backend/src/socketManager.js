@@ -147,6 +147,7 @@ function broadcastGameState(io, roomId) {
     currentSyllable: room.currentSyllable ?? null,
     currentAttempt: room.currentAttempt ?? '',
     usedWords: room.usedWords ?? [],
+    usedWordsByPlayer: room.usedWordsByPlayer ?? {},
     currentPlayerId: currentPlayer?.disconnected ? null : (currentPlayer?.socketId ?? null),
     turnDurationMs: room.currentTurnDurationMs ?? null,
     // Absolute server timestamp so clients don't drift due to network latency
@@ -366,6 +367,7 @@ export function attachSocketHandlers(io) {
         currentSyllable: null,
         currentAttempt: '',
         usedWords: [],
+        usedWordsByPlayer: {},
         currentTurnIndex: 0,
         turnTimer: null,
         turnExpiresAt: null,
@@ -518,6 +520,7 @@ export function attachSocketHandlers(io) {
       room.currentTurnIndex = getFirstActiveTurnIndex(room);
       room.currentAttempt = '';
       room.usedWords = [];
+      room.usedWordsByPlayer = {};
       room.currentTurnDurationMs = getTurnDurationMs(room);
       room.currentSyllable = firstSyllable;
       // Set expiry timestamp BEFORE broadcasting so the first turn has the correct value
@@ -572,6 +575,9 @@ export function attachSocketHandlers(io) {
       const used = room.usedWords ?? [];
       used.push(word);
       room.usedWords = used;
+      if (!room.usedWordsByPlayer) room.usedWordsByPlayer = {};
+      if (!room.usedWordsByPlayer[socket.id]) room.usedWordsByPlayer[socket.id] = [];
+      room.usedWordsByPlayer[socket.id].push(word);
       room.currentAttempt = '';
       currentPlayer.score = (currentPlayer.score ?? 0) + 1;
       const nextIdx = getNextTurnIndex(room);

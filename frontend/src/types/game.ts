@@ -20,6 +20,7 @@ export interface GameState {
   turnDurationMs?: number;
   /** Absolute server timestamp (ms since epoch) when the current turn expires */
   turnExpiresAt?: number | null;
+  usedWordsByPlayer?: Record<string, string[]>;
   players: Player[];
 }
 

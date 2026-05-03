@@ -74,8 +74,7 @@ body {
   65%  { transform:translateX(-50%) translateY(-2px) scale(1.05); }
   100% { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
 }
-@keyframes arrow-pulse { 0%,100%{opacity:.65}  50%{opacity:1} }
-@keyframes star-bob    { 0%,100%{transform:scale(1) rotate(-8deg)} 50%{transform:scale(1.2) rotate(8deg)} }
+@keyframes arrow-pulse { 0%,100%{opacity:.55}  50%{opacity:1} }
 @keyframes ping        { 75%,100%{transform:scale(2.2);opacity:0} }
 @keyframes slide-up    { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
 
@@ -398,20 +397,48 @@ body {
   text-shadow: 0 0 8px rgba(34,211,238,0.4);
 }
 
+.bp-player-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  max-width: 108px;
+  margin-top: 2px;
+}
+.bp-player-word-chip {
+  font-size: 9px;
+  font-family: monospace;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Turn arrow ── */
 .bp-turn-arrow {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  animation: arrow-pulse 1.3s ease-in-out infinite;
+  animation: arrow-pulse 1s ease-in-out infinite;
 }
-.bp-turn-star {
+.bp-turn-indicator {
   position: absolute;
-  font-size: 15px;
-  z-index: 4;
-  animation: star-bob 2s ease-in-out infinite;
-  filter: drop-shadow(0 0 5px rgba(251,191,36,0.7));
+  z-index: 6;
+  font-size: 18px;
+  color: var(--red);
+  text-shadow: 0 0 10px rgba(255,59,59,0.8);
+  pointer-events: none;
+  animation: bounce-indicator 0.7s ease-in-out infinite alternate;
+}
+@keyframes bounce-indicator {
+  from { transform: translateY(0); opacity: 0.8; }
+  to   { transform: translateY(6px); opacity: 1; }
 }
 
 /* ── Feedback toast ── */
@@ -828,5 +855,5 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .shake-on-invalid, .bp-bomb-ring, .bp-turn-arrow,
-  .bp-your-turn, .bp-feedback, .bp-active-ring { animation: none; }
+  .bp-turn-indicator, .bp-your-turn, .bp-feedback, .bp-active-ring { animation: none; }
 }

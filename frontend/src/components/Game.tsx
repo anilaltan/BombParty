@@ -8,11 +8,6 @@ import type { Player, ChatMessage } from '../types/game';
 const DEFAULT_TURN_DURATION_MS = 15000;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-function formatTime(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-}
 
 export function Game() {
   const {
@@ -192,8 +187,9 @@ export function Game() {
     const cy = arenaSize.h / 2;
     const rx = Math.min(arenaSize.w * 0.38, 270);
     const ry = Math.min(arenaSize.h * 0.36, 210);
+    const startAngle = n === 2 ? 0 : -Math.PI / 2;
     return players.map((_, i) => {
-      const angle = (2 * Math.PI * i) / n - Math.PI / 2;
+      const angle = (2 * Math.PI * i) / n + startAngle;
       return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle), angle };
     });
   }, [players.length, arenaSize]);
@@ -293,9 +289,6 @@ export function Game() {
         <div style={{ flex: 1 }} />
         <span className="bp-words-count">{wordsPlayed} words</span>
         <div className="bp-header-sep" />
-        <span className={`bp-timer-large ${urgent ? 'urgent' : ''}`}>
-          {timerMs !== null ? formatTime(timerMs) : '00:00'}
-        </span>
       </header>
 
       {/* ── Game area ── */}
@@ -308,11 +301,12 @@ export function Game() {
             if (!pos) return null;
             const active = p.socketId === gameState.currentPlayerId;
             const liveWord = active ? (liveAttempt?.word ?? '').toUpperCase() : '';
+            const myWords = gameState.usedWordsByPlayer?.[p.socketId] ?? [];
             return (
               <div
                 key={p.socketId}
                 className={`bp-player${p.isEliminated ? ' eliminated' : ''}`}
-                style={{ left: pos.x - 50, top: pos.y - 50, width: 100 }}
+                style={{ left: pos.x - 54, top: pos.y - 50, width: 108 }}
               >
                 <span className="bp-player-name">{p.nickname?.trim() ?? p.socketId.slice(0, 10)}</span>
                 <div className={`bp-avatar-card${active ? ' active' : ''}`}>
@@ -325,48 +319,51 @@ export function Game() {
                   ))}
                 </div>
                 {liveWord && <span className="bp-live-word">{liveWord}</span>}
+                {myWords.length > 0 && (
+                  <div className="bp-player-words">
+                    {myWords.slice(-4).map(w => (
+                      <span key={w} className="bp-player-word-chip">{w}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
 
-          {/* Arrow */}
+          {/* Turn arrow: line from bomb to active player */}
           {arrowTarget && currentIdx >= 0 && (
-            <>
-              <svg
-                className="bp-turn-arrow"
-                viewBox={`0 0 ${arenaSize.w} ${arenaSize.h}`}
-                preserveAspectRatio="none"
-                style={{ width: arenaSize.w, height: arenaSize.h, position: 'absolute', inset: 0 }}
-              >
-                <defs>
-                  <marker id="ah" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
-                    <polygon points="0 0,12 4,0 8" fill="var(--red)" opacity="0.8" />
-                  </marker>
-                  <filter id="glow">
-                    <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="var(--red)" floodOpacity="0.5" />
-                  </filter>
-                </defs>
-                <line
-                  x1={cx} y1={cy}
-                  x2={cx + arrowLength * Math.cos(arrowAngle)}
-                  y2={cy + arrowLength * Math.sin(arrowAngle)}
-                  stroke="var(--red)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray="6 4"
-                  markerEnd="url(#ah)"
-                  filter="url(#glow)"
-                  opacity="0.75"
-                />
-              </svg>
-              <div
-                className="bp-turn-star"
-                style={{
-                  left: cx + (arrowLength * 0.52) * Math.cos(arrowAngle) - 8,
-                  top:  cy + (arrowLength * 0.52) * Math.sin(arrowAngle) - 8,
-                }}
-              >⭐</div>
-            </>
+            <svg
+              className="bp-turn-arrow"
+              viewBox={`0 0 ${arenaSize.w} ${arenaSize.h}`}
+              style={{ width: arenaSize.w, height: arenaSize.h, position: 'absolute', inset: 0 }}
+            >
+              <defs>
+                <marker id="ah" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0,10 3.5,0 7" fill="var(--red)" />
+                </marker>
+                <filter id="glow">
+                  <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="var(--red)" floodOpacity="0.7" />
+                </filter>
+              </defs>
+              <line
+                x1={cx} y1={cy}
+                x2={cx + arrowLength * Math.cos(arrowAngle)}
+                y2={cy + arrowLength * Math.sin(arrowAngle)}
+                stroke="var(--red)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                markerEnd="url(#ah)"
+                filter="url(#glow)"
+              />
+            </svg>
+          )}
+
+          {/* Bouncing indicator above active player's card */}
+          {arrowTarget && (
+            <div
+              className="bp-turn-indicator"
+              style={{ left: arrowTarget.x - 10, top: arrowTarget.y - 80 }}
+            >▼</div>
           )}
 
           {/* Bomb center */}
