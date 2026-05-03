@@ -11,41 +11,40 @@ type LobbyProps = {
 
 export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const { socket, connected, roomId, players, gameState, lastError, clearLastError } = useSocket();
-  const [nickname, setNickname] = useState('');
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('1');
-  const [roomCode, setRoomCode] = useState('');
-  const [timeMode, setTimeMode] = useState<'fixed' | 'range'>('fixed');
-  const [fixedSeconds, setFixedSeconds] = useState('15');
-  const [minSeconds, setMinSeconds] = useState('10');
-  const [maxSeconds, setMaxSeconds] = useState('20');
+  const [nickname, setNickname]     = useState('');
+  const [avatarId, setAvatarId]     = useState('1');
+  const [roomCode, setRoomCode]     = useState('');
+  const [timeMode, setTimeMode]     = useState<'fixed' | 'range'>('fixed');
+  const [fixedSec, setFixedSec]     = useState('15');
+  const [minSec, setMinSec]         = useState('10');
+  const [maxSec, setMaxSec]         = useState('20');
   const [actionError, setActionError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating]     = useState(false);
 
-  const me = players.find((p) => p.socketId === socket?.id);
+  const me      = players.find(p => p.socketId === socket?.id);
   const isReady = me?.ready ?? false;
-  const isHost = me?.isHost ?? false;
+  const isHost  = me?.isHost ?? false;
   const canStart =
-    isHost &&
-    players.length >= 2 &&
-    players.every((p) => p.ready) &&
+    isHost && players.length >= 2 &&
+    players.every(p => p.ready) &&
     gameState?.status === 'waiting';
 
-  const handleCreateRoom = () => {
+  const err = actionError ?? lastError;
+
+  const handleCreate = () => {
     setActionError(null);
     clearLastError();
     const name = nickname.trim();
     if (!name) { setActionError('Please enter a nickname'); return; }
     if (!socket) { setActionError('Not connected'); return; }
-    const parsedFixed = Number(fixedSeconds);
-    const parsedMin = Number(minSeconds);
-    const parsedMax = Number(maxSeconds);
-    if (timeMode === 'fixed' && (!Number.isFinite(parsedFixed) || parsedFixed < 3 || parsedFixed > 60)) {
-      setActionError('Fixed time must be 3-60 seconds');
-      return;
+    const pFixed = Number(fixedSec);
+    const pMin   = Number(minSec);
+    const pMax   = Number(maxSec);
+    if (timeMode === 'fixed' && (!Number.isFinite(pFixed) || pFixed < 3 || pFixed > 60)) {
+      setActionError('Fixed time must be 3–60 seconds'); return;
     }
-    if (timeMode === 'range' && (!Number.isFinite(parsedMin) || !Number.isFinite(parsedMax) || parsedMin < 3 || parsedMax > 60 || parsedMin > parsedMax)) {
-      setActionError('Range must be 3-60 and min <= max');
-      return;
+    if (timeMode === 'range' && (!Number.isFinite(pMin) || !Number.isFinite(pMax) || pMin < 3 || pMax > 60 || pMin > pMax)) {
+      setActionError('Range must be 3–60 s and min ≤ max'); return;
     }
     setCreating(true);
     const timeout = setTimeout(() => {
@@ -56,108 +55,95 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
       EVENTS.CREATE_ROOM,
       {
         nickname: name,
-        avatarId: selectedAvatarId,
-        turnTime:
-          timeMode === 'fixed'
-            ? { mode: 'fixed', fixedSeconds: parsedFixed }
-            : { mode: 'range', minSeconds: parsedMin, maxSeconds: parsedMax },
+        avatarId,
+        turnTime: timeMode === 'fixed'
+          ? { mode: 'fixed', fixedSeconds: pFixed }
+          : { mode: 'range', minSeconds: pMin, maxSeconds: pMax },
       },
       (res: { ok?: boolean; error?: string }) => {
         clearTimeout(timeout);
         setCreating(false);
         if (res && !res.ok) setActionError(res.error ?? 'Failed to create room');
-      }
+      },
     );
   };
 
-  const handleJoinRoom = () => {
+  const handleJoin = () => {
     const code = roomCode.trim().toUpperCase();
-    if (!code) { setActionError('Enter room code'); return; }
     const name = nickname.trim();
+    if (!code) { setActionError('Enter a room code'); return; }
     if (!name) { setActionError('Please enter a nickname'); return; }
     setActionError(null);
     clearLastError();
-    socket?.emit(EVENTS.JOIN_ROOM, { roomId: code, nickname: name, avatarId: selectedAvatarId }, (res: { ok?: boolean; error?: string }) => {
-      if (res && !res.ok) setActionError(res.error ?? 'Failed to join room');
-    });
+    socket?.emit(EVENTS.JOIN_ROOM, { roomId: code, nickname: name, avatarId },
+      (res: { ok?: boolean; error?: string }) => {
+        if (res && !res.ok) setActionError(res.error ?? 'Failed to join room');
+      });
   };
 
-  const handleSetReady = (value: boolean) => {
+  const handleReady = (v: boolean) => {
     setActionError(null);
-    socket?.emit(EVENTS.SET_READY, { ready: value }, (res: { ok?: boolean; error?: string }) => {
-      if (res?.error) setActionError(res.error);
-    });
+    socket?.emit(EVENTS.SET_READY, { ready: v },
+      (res: { ok?: boolean; error?: string }) => {
+        if (res?.error) setActionError(res.error);
+      });
   };
 
-  const handleStartGame = () => {
+  const handleStart = () => {
     setActionError(null);
-    socket?.emit(EVENTS.START_GAME, {}, (res: { ok?: boolean; error?: string }) => {
-      if (res && !res.ok) setActionError(res.error ?? 'Failed to start');
-    });
+    socket?.emit(EVENTS.START_GAME, {},
+      (res: { ok?: boolean; error?: string }) => {
+        if (res && !res.ok) setActionError(res.error ?? 'Failed to start');
+      });
   };
-
-  const err = actionError ?? lastError;
 
   if (!connected) {
     return (
-      <div className="jklm-lobby">
-        <p style={{ color: 'var(--jklm-gold)' }}>Connecting to server...</p>
+      <div className="bp-lobby">
+        <p style={{ color: 'var(--text-2)' }}>Connecting to server…</p>
       </div>
     );
   }
 
-  // Pre-room: Create or Join
+  /* ── Pre-room: create or join ── */
   if (!roomId) {
     return (
-      <div className="jklm-lobby">
-        <h1>
-          <span className="jklm-lobby-title-accent">Bomb</span>Party
-        </h1>
-        <p style={{ color: 'var(--jklm-text-muted)', fontSize: 13, marginTop: -8, textAlign: 'center' }}>
-          Word game — type words containing the syllable before time runs out!
-        </p>
-        <span style={{ fontSize: 11, color: 'var(--jklm-text-muted)', opacity: 0.5, letterSpacing: 1 }}>
-          v{__APP_VERSION__}
-        </span>
+      <div className="bp-lobby">
 
-        <div className="jklm-lobby-card">
+        {/* Brand */}
+        <div className="bp-brand" style={{ textAlign: 'center' }}>
+          <h1><span>Bomb</span>Party</h1>
+          <p>Type words containing the syllable before the bomb explodes!</p>
+          <div className="bp-brand-version">v{__APP_VERSION__}</div>
+        </div>
+
+        {/* Main card */}
+        <div className="bp-card">
+
           {/* Nickname */}
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--jklm-text-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
-              Nickname
-            </label>
+          <div className="bp-field">
+            <label>Nickname</label>
             <input
               type="text"
-              placeholder="Enter your name..."
+              className="bp-input"
+              placeholder="Enter your name…"
               value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
+              onChange={e => setNickname(e.target.value)}
+              maxLength={20}
             />
           </div>
 
-          {/* Avatar picker */}
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--jklm-text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              Avatar
-            </label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {AVATAR_OPTIONS.map((a) => (
+          {/* Avatar */}
+          <div className="bp-field">
+            <label>Avatar</label>
+            <div className="bp-avatars">
+              {AVATAR_OPTIONS.map(a => (
                 <button
                   key={a.id}
                   type="button"
-                  onClick={() => setSelectedAvatarId(a.id)}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 8,
-                    fontSize: 20,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: selectedAvatarId === a.id ? '2px solid var(--jklm-gold)' : '2px solid rgba(255,255,255,0.1)',
-                    background: selectedAvatarId === a.id ? 'rgba(234,179,8,0.1)' : 'var(--jklm-bg-darker)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
+                  className={`bp-av-btn${avatarId === a.id ? ' picked' : ''}`}
+                  onClick={() => setAvatarId(a.id)}
+                  title={a.emoji}
                 >
                   {a.emoji}
                 </button>
@@ -165,126 +151,83 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             </div>
           </div>
 
-          {/* Turn time settings */}
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--jklm-text-muted)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              Turn Duration
-            </label>
-            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          {/* Turn duration */}
+          <div className="bp-field">
+            <label>Turn Duration</label>
+            <div className="bp-tabs" style={{ marginBottom: 8 }}>
               <button
                 type="button"
+                className={`bp-tab ${timeMode === 'fixed' ? 'on' : 'off'}`}
                 onClick={() => setTimeMode('fixed')}
-                style={{
-                  flex: 1,
-                  padding: '6px 0',
-                  borderRadius: 6,
-                  border: 'none',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: timeMode === 'fixed' ? 'var(--jklm-gold)' : 'rgba(255,255,255,0.06)',
-                  color: timeMode === 'fixed' ? 'var(--jklm-bg-darker)' : 'var(--jklm-text-muted)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                Fixed
-              </button>
+              >Fixed</button>
               <button
                 type="button"
+                className={`bp-tab ${timeMode === 'range' ? 'on' : 'off'}`}
                 onClick={() => setTimeMode('range')}
-                style={{
-                  flex: 1,
-                  padding: '6px 0',
-                  borderRadius: 6,
-                  border: 'none',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: timeMode === 'range' ? 'var(--jklm-gold)' : 'rgba(255,255,255,0.06)',
-                  color: timeMode === 'range' ? 'var(--jklm-bg-darker)' : 'var(--jklm-text-muted)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                Range
-              </button>
+              >Range</button>
             </div>
+
             {timeMode === 'fixed' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13, color: 'var(--jklm-text-muted)' }}>Seconds</span>
                 <input
                   type="number"
-                  min={3}
-                  max={60}
-                  value={fixedSeconds}
-                  onChange={(e) => setFixedSeconds(e.target.value)}
-                  style={{ width: 80, textAlign: 'center' }}
+                  className="bp-input"
+                  min={3} max={60}
+                  value={fixedSec}
+                  onChange={e => setFixedSec(e.target.value)}
+                  style={{ width: 90, textAlign: 'center' }}
                 />
+                <span style={{ fontSize: 13, color: 'var(--text-2)' }}>seconds</span>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13, color: 'var(--jklm-text-muted)' }}>Min</span>
-                  <input
-                    type="number"
-                    min={3}
-                    max={60}
-                    value={minSeconds}
-                    onChange={(e) => setMinSeconds(e.target.value)}
-                    style={{ width: '100%', textAlign: 'center' }}
-                  />
-                </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13, color: 'var(--jklm-text-muted)' }}>Max</span>
-                  <input
-                    type="number"
-                    min={3}
-                    max={60}
-                    value={maxSeconds}
-                    onChange={(e) => setMaxSeconds(e.target.value)}
-                    style={{ width: '100%', textAlign: 'center' }}
-                  />
-                </div>
+                {[
+                  { label: 'Min', val: minSec, set: setMinSec },
+                  { label: 'Max', val: maxSec, set: setMaxSec },
+                ].map(({ label, val, set }) => (
+                  <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', width: 24 }}>{label}</span>
+                    <input
+                      type="number"
+                      className="bp-input"
+                      min={3} max={60}
+                      value={val}
+                      onChange={e => set(e.target.value)}
+                      style={{ textAlign: 'center' }}
+                    />
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Create button */}
+          {/* Create */}
           <button
             type="button"
-            className="jklm-lobby-btn-primary"
-            onClick={handleCreateRoom}
+            className="bp-btn-primary"
+            onClick={handleCreate}
             disabled={creating}
           >
-            {creating ? 'Creating...' : 'Start a New Room'}
+            {creating ? 'Creating…' : '💣 Start a New Room'}
           </button>
 
-          {/* Divider */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            color: 'var(--jklm-text-muted)',
-            fontSize: 12,
-          }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--jklm-border)' }} />
-            <span>or join existing</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--jklm-border)' }} />
-          </div>
+          <div className="bp-divider">or join existing</div>
 
-          {/* Join room */}
+          {/* Join */}
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="text"
+              className="bp-input"
               placeholder="Room code"
               value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              onChange={e => setRoomCode(e.target.value.toUpperCase())}
               maxLength={6}
-              style={{ textTransform: 'uppercase', letterSpacing: 2, textAlign: 'center', fontWeight: 700 }}
+              style={{ textTransform: 'uppercase', letterSpacing: 3, textAlign: 'center', fontWeight: 700, fontFamily: 'monospace' }}
             />
             <button
               type="button"
-              className="jklm-lobby-btn-secondary"
-              onClick={handleJoinRoom}
+              className="bp-btn-secondary"
+              onClick={handleJoin}
               style={{ whiteSpace: 'nowrap' }}
             >
               Join
@@ -292,89 +235,92 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
           </div>
         </div>
 
-        {/* Utility buttons */}
+        {/* Utility links */}
         <div style={{ display: 'flex', gap: 8 }}>
           {onOpenSettings && (
-            <button type="button" className="jklm-lobby-btn-secondary" onClick={onOpenSettings}>
-              Settings
+            <button type="button" className="bp-btn-secondary" onClick={onOpenSettings}>
+              ⚙ Settings
             </button>
           )}
           {onOpenDictionary && (
-            <button type="button" className="jklm-lobby-btn-secondary" onClick={onOpenDictionary}>
-              Dictionary
+            <button type="button" className="bp-btn-secondary" onClick={onOpenDictionary}>
+              📖 Dictionary
             </button>
           )}
         </div>
 
-        {err && (
-          <p style={{ color: '#ef4444', fontSize: 13, textAlign: 'center' }}>{err}</p>
-        )}
+        {err && <p className="bp-error">{err}</p>}
       </div>
     );
   }
 
-  // In-room: waiting for game start
+  /* ── In-room: waiting for start ── */
   return (
-    <div className="jklm-room-view">
+    <div className="bp-room-view">
+
+      {/* Room code */}
       <div style={{ textAlign: 'center' }}>
-        <p style={{ color: 'var(--jklm-text-muted)', fontSize: 13, marginBottom: 4 }}>Room Code</p>
-        <div className="jklm-room-code">{roomId}</div>
-        <p style={{ color: 'var(--jklm-text-muted)', fontSize: 12, marginTop: 4 }}>
-          Share this code to invite others
+        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>
+          Room Code
+        </p>
+        <div className="bp-code-display">{roomId}</div>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-2)' }}>
+          Share this code to invite friends
         </p>
       </div>
 
+      {/* Player list */}
       <div style={{ width: '100%', maxWidth: 360 }}>
         {players.map((p: Player) => (
-          <div key={p.socketId} className="jklm-player-list-item">
+          <div key={p.socketId} className="bp-player-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 24 }}>{getAvatarEmoji(p.avatarId)}</span>
               <div>
-                <div style={{ fontWeight: 600, color: 'var(--jklm-text)' }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
                   {p.nickname || p.socketId.slice(0, 8)}
                 </div>
-                {p.isHost && (
-                  <span style={{ fontSize: 10, color: 'var(--jklm-gold)', fontWeight: 700 }}>HOST</span>
-                )}
+                {p.isHost && <span className="bp-host-tag">host</span>}
               </div>
             </div>
-            <span className={`jklm-ready-badge ${p.ready ? 'ready' : 'not-ready'}`}>
-              {p.ready ? 'Ready' : 'Not Ready'}
-            </span>
+            <div className="bp-ready-indicator">
+              <div className={`bp-ready-dot ${p.ready ? 'yes' : 'no'}`} />
+              <span style={{ color: p.ready ? 'var(--green)' : 'var(--text-3)', fontSize: 11 }}>
+                {p.ready ? 'Ready' : 'Not ready'}
+              </span>
+            </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <button
           type="button"
-          className="jklm-lobby-btn-secondary"
-          onClick={() => handleSetReady(!isReady)}
+          className="bp-btn-secondary"
+          onClick={() => handleReady(!isReady)}
           style={{
-            background: isReady ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.08)',
-            borderColor: isReady ? 'rgba(74,222,128,0.3)' : 'var(--jklm-border)',
-            color: isReady ? 'var(--jklm-green)' : 'var(--jklm-text)',
+            borderColor: isReady ? 'rgba(34,197,94,0.35)' : undefined,
+            color: isReady ? 'var(--green)' : undefined,
+            background: isReady ? 'var(--green-dim)' : undefined,
           }}
         >
-          {isReady ? '✓ Ready' : 'Click to Ready Up'}
+          {isReady ? '✓ Ready' : 'Ready Up'}
         </button>
+
+        {isHost && (
+          <button
+            type="button"
+            className="bp-btn-primary"
+            onClick={handleStart}
+            disabled={!canStart}
+            style={{ width: 'auto', paddingLeft: 28, paddingRight: 28 }}
+          >
+            Start Game
+          </button>
+        )}
       </div>
 
-      {isHost && (
-        <button
-          type="button"
-          className="jklm-lobby-btn-primary"
-          onClick={handleStartGame}
-          disabled={!canStart}
-          style={{ maxWidth: 240 }}
-        >
-          Start Game
-        </button>
-      )}
-
-      {err && (
-        <p style={{ color: '#ef4444', fontSize: 13 }}>{err}</p>
-      )}
+      {err && <p className="bp-error">{err}</p>}
     </div>
   );
 }
