@@ -361,12 +361,14 @@ export function attachSocketHandlers(io) {
         hostId: socket.id,
         players: [player],
         turnTimerConfig,
-        currentTurnDurationMs: turnTimerConfig.fixedMs,
+        currentTurnDurationMs: null,
         status: 'waiting',
         currentSyllable: null,
         currentAttempt: '',
         usedWords: [],
         currentTurnIndex: 0,
+        turnTimer: null,
+        turnExpiresAt: null,
       });
       socketToRoom.set(socket.id, newId);
 
@@ -518,6 +520,8 @@ export function attachSocketHandlers(io) {
       room.usedWords = [];
       room.currentTurnDurationMs = getTurnDurationMs(room);
       room.currentSyllable = firstSyllable;
+      // Set expiry timestamp BEFORE broadcasting so the first turn has the correct value
+      room.turnExpiresAt = Date.now() + room.currentTurnDurationMs;
       if (typeof cb === 'function') cb({ ok: true });
       broadcastPlayerList(io, roomId);
       broadcastGameState(io, roomId);
