@@ -116,6 +116,9 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
         <p style={{ color: 'var(--jklm-text-muted)', fontSize: 13, marginTop: -8, textAlign: 'center' }}>
           Word game — type words containing the syllable before time runs out!
         </p>
+        <span style={{ fontSize: 11, color: 'var(--jklm-text-muted)', opacity: 0.5, letterSpacing: 1 }}>
+          v{__APP_VERSION__}
+        </span>
 
         <div className="jklm-lobby-card">
           {/* Nickname */}

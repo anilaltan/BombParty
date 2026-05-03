@@ -370,6 +370,9 @@ export function Game() {
       {/* ===== HEADER BAR ===== */}
       <header className="jklm-header">
         <span className="jklm-logo">BOMBPARTY</span>
+        <span style={{ fontSize: 10, color: 'var(--jklm-text-muted)', opacity: 0.45, letterSpacing: 1, alignSelf: 'center' }}>
+          v{__APP_VERSION__}
+        </span>
         <span className="jklm-player-count">{n}</span>
         <span className="jklm-room-name">Room {roomId}</span>
         <span style={{ color: 'var(--jklm-text-muted)', fontSize: 12 }}>•</span>
