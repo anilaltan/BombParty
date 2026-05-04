@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
-const DISPLAY_PAGE_SIZE = 2000;
+const PAGE_SIZE = 2000;
 
 const TR_ALPHA: { label: string; char: string }[] = [
   { label: 'A', char: 'a' }, { label: 'B', char: 'b' }, { label: 'C', char: 'c' },
@@ -30,14 +30,48 @@ function Highlight({ word, query }: { word: string; query: string }) {
   );
 }
 
+function PageControls({
+  page, total, onChange,
+}: { page: number; total: number; onChange: (p: number) => void }) {
+  if (total <= 1) return null;
+  const pages = Array.from({ length: total }, (_, i) => i + 1)
+    .filter(p => Math.abs(p - page) <= 2 || p === 1 || p === total)
+    .reduce<(number | '…')[]>((acc, p, i, arr) => {
+      if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('…');
+      acc.push(p);
+      return acc;
+    }, []);
+
+  return (
+    <div className="bp-dict-pagination">
+      <button className="bp-dict-page-btn" onClick={() => onChange(1)}          disabled={page <= 1}>«</button>
+      <button className="bp-dict-page-btn" onClick={() => onChange(page - 1)}  disabled={page <= 1}>‹ Prev</button>
+      <div className="bp-dict-page-nums">
+        {pages.map((p, i) =>
+          p === '…'
+            ? <span key={`e${i}`} className="bp-dict-page-ellipsis">…</span>
+            : <button
+                key={p}
+                className={`bp-dict-page-btn${p === page ? ' active' : ''}`}
+                onClick={() => onChange(p as number)}
+              >{p}</button>
+        )}
+      </div>
+      <button className="bp-dict-page-btn" onClick={() => onChange(page + 1)}  disabled={page >= total}>Next ›</button>
+      <button className="bp-dict-page-btn" onClick={() => onChange(total)}      disabled={page >= total}>»</button>
+    </div>
+  );
+}
+
 export function Dictionary({ onBack }: Props) {
   const [allWords, setAllWords]         = useState<string[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
   const [search, setSearch]             = useState('');
   const [letterFilter, setLetterFilter] = useState<string | null>(null);
-  const [displayPage, setDisplayPage]   = useState(1);
+  const [page, setPage]                 = useState(1);
   const searchRef = useRef<HTMLInputElement>(null);
+  const bodyRef   = useRef<HTMLDivElement>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -65,9 +99,7 @@ export function Dictionary({ onBack }: Props) {
   }, [onBack]);
 
   const searchLower = search.trim().toLowerCase();
-  const isFiltered  = !!searchLower || !!letterFilter;
 
-  // Letter counts across the FULL dictionary
   const letterCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const w of allWords) {
@@ -77,7 +109,7 @@ export function Dictionary({ onBack }: Props) {
     return counts;
   }, [allWords]);
 
-  // Filtered list used for display
+  // Filtered list (all matching words, unpaged)
   const filtered = useMemo(() => {
     let result = allWords;
     if (letterFilter) result = result.filter(w => w.charAt(0) === letterFilter);
@@ -85,31 +117,25 @@ export function Dictionary({ onBack }: Props) {
     return result;
   }, [allWords, letterFilter, searchLower]);
 
-  // Pagination only applies to the unfiltered full list
-  const displayWords = useMemo(() => {
-    if (isFiltered) return filtered;
-    const start = (displayPage - 1) * DISPLAY_PAGE_SIZE;
-    return allWords.slice(start, start + DISPLAY_PAGE_SIZE);
-  }, [isFiltered, filtered, allWords, displayPage]);
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage    = Math.min(page, totalPages);
+  const pageWords   = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const totalDisplayPages = Math.max(1, Math.ceil(allWords.length / DISPLAY_PAGE_SIZE));
+  const changePage = (p: number) => {
+    setPage(p);
+    bodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleLetterClick = (char: string) => {
     setLetterFilter(prev => prev === char ? null : char);
     setSearch('');
-    setDisplayPage(1);
+    setPage(1);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setLetterFilter(null);
-    setDisplayPage(1);
-  };
-
-  const goToPage = (p: number) => {
-    setDisplayPage(p);
-    setLetterFilter(null);
-    setSearch('');
+    setPage(1);
   };
 
   return (
@@ -148,16 +174,19 @@ export function Dictionary({ onBack }: Props) {
             <button
               type="button"
               className="bp-dict-clear-btn"
-              onClick={() => { setSearch(''); searchRef.current?.focus(); }}
+              onClick={() => { setSearch(''); setPage(1); searchRef.current?.focus(); }}
             >✕</button>
           )}
         </div>
         {!loading && (
           <div className="bp-dict-result-badge">
-            {isFiltered
+            {(searchLower || letterFilter)
               ? <><strong>{filtered.length.toLocaleString()}</strong> match{filtered.length !== 1 ? 'es' : ''}</>
-              : <><strong>{displayWords.length.toLocaleString()}</strong> shown · page {displayPage}/{totalDisplayPages}</>
+              : <><strong>{allWords.length.toLocaleString()}</strong> total words</>
             }
+            {totalPages > 1 && (
+              <> · page <strong>{safePage}</strong>/{totalPages}</>
+            )}
           </div>
         )}
       </div>
@@ -165,7 +194,7 @@ export function Dictionary({ onBack }: Props) {
       {/* ── Alphabet filter ── */}
       <div className="bp-dict-alphabet-row">
         {TR_ALPHA.map(({ label, char }) => {
-          const count = letterCounts[char] ?? 0;
+          const count  = letterCounts[char] ?? 0;
           const active = letterFilter === char;
           return (
             <button
@@ -178,16 +207,18 @@ export function Dictionary({ onBack }: Props) {
             >
               {label}
               {!loading && count > 0 && (
-                <span className="bp-dict-alpha-count">{count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}</span>
+                <span className="bp-dict-alpha-count">
+                  {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
+                </span>
               )}
             </button>
           );
         })}
-        {letterFilter && (
+        {(letterFilter || searchLower) && (
           <button
             type="button"
             className="bp-dict-clear-filter-btn"
-            onClick={() => setLetterFilter(null)}
+            onClick={() => { setLetterFilter(null); setSearch(''); setPage(1); }}
           >✕ Clear</button>
         )}
       </div>
@@ -195,31 +226,23 @@ export function Dictionary({ onBack }: Props) {
       {error && <p className="bp-error" style={{ margin: '0 24px' }}>{error}</p>}
 
       {/* ── Word grid ── */}
-      <div className="bp-dict-body bp-scroll">
+      <div className="bp-dict-body bp-scroll" ref={bodyRef}>
         {loading ? (
           <div className="bp-dict-skeleton">
             {Array.from({ length: 80 }).map((_, i) => (
-              <div
-                key={i}
-                className="bp-dict-skeleton-chip"
-                style={{ width: `${48 + (i * 37 % 72)}px` }}
-              />
+              <div key={i} className="bp-dict-skeleton-chip" style={{ width: `${48 + (i * 37 % 72)}px` }} />
             ))}
           </div>
-        ) : displayWords.length === 0 ? (
+        ) : pageWords.length === 0 ? (
           <div className="bp-dict-empty">
             <span className="bp-dict-empty-icon">📭</span>
             <span>
-              {search
-                ? `No words found for "${search}"`
-                : letterFilter
-                  ? `No words starting with that letter`
-                  : 'No words loaded'}
+              {search ? `No words found for "${search}"` : 'No words found'}
             </span>
           </div>
         ) : (
           <div className="bp-dict-grid">
-            {displayWords.map(w => (
+            {pageWords.map(w => (
               <div key={w} className="bp-dict-word">
                 <Highlight word={w} query={searchLower} />
                 <span className="bp-dict-word-len">{w.length}</span>
@@ -229,57 +252,9 @@ export function Dictionary({ onBack }: Props) {
         )}
       </div>
 
-      {/* ── Pagination (unfiltered view only) ── */}
-      {!isFiltered && totalDisplayPages > 1 && !loading && (
-        <div className="bp-dict-pagination">
-          <button
-            type="button"
-            className="bp-dict-page-btn"
-            onClick={() => goToPage(1)}
-            disabled={displayPage <= 1}
-          >«</button>
-          <button
-            type="button"
-            className="bp-dict-page-btn"
-            onClick={() => goToPage(displayPage - 1)}
-            disabled={displayPage <= 1}
-          >‹ Prev</button>
-
-          <div className="bp-dict-page-nums">
-            {Array.from({ length: totalDisplayPages }, (_, i) => i + 1)
-              .filter(p => Math.abs(p - displayPage) <= 2 || p === 1 || p === totalDisplayPages)
-              .reduce<(number | '…')[]>((acc, p, i, arr) => {
-                if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('…');
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, i) =>
-                p === '…' ? (
-                  <span key={`e${i}`} className="bp-dict-page-ellipsis">…</span>
-                ) : (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`bp-dict-page-btn${p === displayPage ? ' active' : ''}`}
-                    onClick={() => goToPage(p as number)}
-                  >{p}</button>
-                )
-              )}
-          </div>
-
-          <button
-            type="button"
-            className="bp-dict-page-btn"
-            onClick={() => goToPage(displayPage + 1)}
-            disabled={displayPage >= totalDisplayPages}
-          >Next ›</button>
-          <button
-            type="button"
-            className="bp-dict-page-btn"
-            onClick={() => goToPage(totalDisplayPages)}
-            disabled={displayPage >= totalDisplayPages}
-          >»</button>
-        </div>
+      {/* ── Pagination (always shown when more than one page) ── */}
+      {!loading && (
+        <PageControls page={safePage} total={totalPages} onChange={changePage} />
       )}
     </div>
   );
