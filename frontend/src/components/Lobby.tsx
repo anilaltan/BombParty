@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSocket } from '../context/SocketContext';
+import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
 import { AVATAR_OPTIONS, getAvatarEmoji } from '../lib/avatars';
 import type { Player } from '../types/game';
@@ -11,6 +12,7 @@ type LobbyProps = {
 
 export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const { socket, connected, roomId, players, gameState, lastError, clearLastError } = useSocket();
+  const { t, lang, setLang } = useI18n();
   const [nickname, setNickname]     = useState('');
   const [avatarId, setAvatarId]     = useState('1');
   const [roomCode, setRoomCode]     = useState('');
@@ -35,21 +37,21 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
     setActionError(null);
     clearLastError();
     const name = nickname.trim();
-    if (!name) { setActionError('Please enter a nickname'); return; }
-    if (!socket) { setActionError('Not connected'); return; }
+    if (!name) { setActionError(t.enterNickname); return; }
+    if (!socket) { setActionError(t.notConnected); return; }
     const pFixed = Number(fixedSec);
     const pMin   = Number(minSec);
     const pMax   = Number(maxSec);
     if (timeMode === 'fixed' && (!Number.isFinite(pFixed) || pFixed < 3 || pFixed > 60)) {
-      setActionError('Fixed time must be 3–60 seconds'); return;
+      setActionError(t.fixedTimeError); return;
     }
     if (timeMode === 'range' && (!Number.isFinite(pMin) || !Number.isFinite(pMax) || pMin < 3 || pMax > 60 || pMin > pMax)) {
-      setActionError('Range must be 3–60 s and min ≤ max'); return;
+      setActionError(t.rangeError); return;
     }
     setCreating(true);
     const timeout = setTimeout(() => {
       setCreating(false);
-      setActionError('Server did not respond. Is the backend running?');
+      setActionError(t.serverNoResponse);
     }, 8000);
     socket.emit(
       EVENTS.CREATE_ROOM,
@@ -63,7 +65,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
       (res: { ok?: boolean; error?: string }) => {
         clearTimeout(timeout);
         setCreating(false);
-        if (res && !res.ok) setActionError(res.error ?? 'Failed to create room');
+        if (res && !res.ok) setActionError(res.error ?? t.failedCreate);
       },
     );
   };
@@ -71,13 +73,13 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const handleJoin = () => {
     const code = roomCode.trim().toUpperCase();
     const name = nickname.trim();
-    if (!code) { setActionError('Enter a room code'); return; }
-    if (!name) { setActionError('Please enter a nickname'); return; }
+    if (!code) { setActionError(t.enterRoomCode); return; }
+    if (!name) { setActionError(t.enterNickname); return; }
     setActionError(null);
     clearLastError();
     socket?.emit(EVENTS.JOIN_ROOM, { roomId: code, nickname: name, avatarId },
       (res: { ok?: boolean; error?: string }) => {
-        if (res && !res.ok) setActionError(res.error ?? 'Failed to join room');
+        if (res && !res.ok) setActionError(res.error ?? t.failedJoin);
       });
   };
 
@@ -93,14 +95,14 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
     setActionError(null);
     socket?.emit(EVENTS.START_GAME, {},
       (res: { ok?: boolean; error?: string }) => {
-        if (res && !res.ok) setActionError(res.error ?? 'Failed to start');
+        if (res && !res.ok) setActionError(res.error ?? t.failedCreate);
       });
   };
 
   if (!connected) {
     return (
       <div className="bp-lobby">
-        <p style={{ color: 'var(--text-2)' }}>Connecting to server…</p>
+        <p style={{ color: 'var(--text-2)' }}>{t.connectingToServer}</p>
       </div>
     );
   }
@@ -113,7 +115,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
         {/* Brand */}
         <div className="bp-brand" style={{ textAlign: 'center' }}>
           <h1><span>Bomb</span>Party</h1>
-          <p>Type words containing the syllable before the bomb explodes!</p>
+          <p>{t.tagline}</p>
           <div className="bp-brand-version">v{__APP_VERSION__}</div>
         </div>
 
@@ -122,11 +124,11 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
 
           {/* Nickname */}
           <div className="bp-field">
-            <label>Nickname</label>
+            <label>{t.nickname}</label>
             <input
               type="text"
               className="bp-input"
-              placeholder="Enter your name…"
+              placeholder={t.enterName}
               value={nickname}
               onChange={e => setNickname(e.target.value)}
               maxLength={20}
@@ -135,7 +137,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
 
           {/* Avatar */}
           <div className="bp-field">
-            <label>Avatar</label>
+            <label>{t.avatar}</label>
             <div className="bp-avatars">
               {AVATAR_OPTIONS.map(a => (
                 <button
@@ -153,18 +155,18 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
 
           {/* Turn duration */}
           <div className="bp-field">
-            <label>Turn Duration</label>
+            <label>{t.turnDuration}</label>
             <div className="bp-tabs" style={{ marginBottom: 8 }}>
               <button
                 type="button"
                 className={`bp-tab ${timeMode === 'fixed' ? 'on' : 'off'}`}
                 onClick={() => setTimeMode('fixed')}
-              >Fixed</button>
+              >{t.fixed}</button>
               <button
                 type="button"
                 className={`bp-tab ${timeMode === 'range' ? 'on' : 'off'}`}
                 onClick={() => setTimeMode('range')}
-              >Range</button>
+              >{t.range}</button>
             </div>
 
             {timeMode === 'fixed' ? (
@@ -177,13 +179,13 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
                   onChange={e => setFixedSec(e.target.value)}
                   style={{ width: 90, textAlign: 'center' }}
                 />
-                <span style={{ fontSize: 13, color: 'var(--text-2)' }}>seconds</span>
+                <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{t.seconds}</span>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
                 {[
-                  { label: 'Min', val: minSec, set: setMinSec },
-                  { label: 'Max', val: maxSec, set: setMaxSec },
+                  { label: t.min, val: minSec, set: setMinSec },
+                  { label: t.max, val: maxSec, set: setMaxSec },
                 ].map(({ label, val, set }) => (
                   <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-2)', width: 24 }}>{label}</span>
@@ -208,17 +210,17 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             onClick={handleCreate}
             disabled={creating}
           >
-            {creating ? 'Creating…' : '💣 Start a New Room'}
+            {creating ? t.creating : t.startNewRoom}
           </button>
 
-          <div className="bp-divider">or join existing</div>
+          <div className="bp-divider">{t.orJoin}</div>
 
           {/* Join */}
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="text"
               className="bp-input"
-              placeholder="Room code"
+              placeholder={t.roomCode}
               value={roomCode}
               onChange={e => setRoomCode(e.target.value.toUpperCase())}
               maxLength={6}
@@ -230,23 +232,31 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
               onClick={handleJoin}
               style={{ whiteSpace: 'nowrap' }}
             >
-              Join
+              {t.join}
             </button>
           </div>
         </div>
 
         {/* Utility links */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
           {onOpenSettings && (
             <button type="button" className="bp-btn-secondary" onClick={onOpenSettings}>
-              ⚙ Settings
+              {t.settings}
             </button>
           )}
           {onOpenDictionary && (
             <button type="button" className="bp-btn-secondary" onClick={onOpenDictionary}>
-              📖 Dictionary
+              {t.dictionary}
             </button>
           )}
+          <button
+            type="button"
+            className="bp-btn-secondary"
+            onClick={() => setLang(lang === 'tr' ? 'en' : 'tr')}
+            style={{ fontWeight: 700, letterSpacing: 1 }}
+          >
+            🌐 {lang === 'tr' ? 'EN' : 'TR'}
+          </button>
         </div>
 
         {err && <p className="bp-error">{err}</p>}
@@ -261,11 +271,11 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
       {/* Room code */}
       <div style={{ textAlign: 'center' }}>
         <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>
-          Room Code
+          {t.roomCodeLabel}
         </p>
         <div className="bp-code-display">{roomId}</div>
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-2)' }}>
-          Share this code to invite friends
+          {t.shareCode}
         </p>
       </div>
 
@@ -279,13 +289,13 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
                 <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
                   {p.nickname || p.socketId.slice(0, 8)}
                 </div>
-                {p.isHost && <span className="bp-host-tag">host</span>}
+                {p.isHost && <span className="bp-host-tag">{t.host}</span>}
               </div>
             </div>
             <div className="bp-ready-indicator">
               <div className={`bp-ready-dot ${p.ready ? 'yes' : 'no'}`} />
               <span style={{ color: p.ready ? 'var(--green)' : 'var(--text-3)', fontSize: 11 }}>
-                {p.ready ? 'Ready' : 'Not ready'}
+                {p.ready ? t.ready : t.notReady}
               </span>
             </div>
           </div>
@@ -304,7 +314,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             background: isReady ? 'var(--green-dim)' : undefined,
           }}
         >
-          {isReady ? '✓ Ready' : 'Ready Up'}
+          {isReady ? t.readyCheck : t.readyUp}
         </button>
 
         {isHost && (
@@ -315,7 +325,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             disabled={!canStart}
             style={{ width: 'auto', paddingLeft: 28, paddingRight: 28 }}
           >
-            Start Game
+            {t.startGame}
           </button>
         )}
       </div>

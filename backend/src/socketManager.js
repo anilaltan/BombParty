@@ -333,19 +333,19 @@ export function attachSocketHandlers(io) {
       const avatarId = typeof payload?.avatarId === 'string' ? payload.avatarId.trim() || undefined : undefined;
       const turnTimerConfig = resolveTurnTimerConfig(payload?.turnTime);
       if (!nickname) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Nickname required' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Takma ad gerekli' });
         return;
       }
       if (nickname.length > MAX_NICKNAME_LENGTH) {
-        if (typeof cb === 'function') cb({ ok: false, error: `Nickname must be ${MAX_NICKNAME_LENGTH} characters or fewer` });
+        if (typeof cb === 'function') cb({ ok: false, error: `Takma ad en fazla ${MAX_NICKNAME_LENGTH} karakter olabilir` });
         return;
       }
       if (!turnTimerConfig) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Invalid turn time settings' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Geçersiz tur süresi ayarları' });
         return;
       }
       if (isProfane(nickname)) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Nickname not allowed' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Bu takma ad kullanılamaz' });
         return;
       }
       const prevRoomId = leaveCurrentRoom(socket);
@@ -392,24 +392,24 @@ export function attachSocketHandlers(io) {
       const nickname = typeof payload?.nickname === 'string' ? payload.nickname.trim() : undefined;
       const avatarId = typeof payload?.avatarId === 'string' ? payload.avatarId.trim() || undefined : undefined;
       if (!roomId) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Room ID required' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oda ID gerekli' });
         return;
       }
       if (!nickname) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Nickname required' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Takma ad gerekli' });
         return;
       }
       if (nickname.length > MAX_NICKNAME_LENGTH) {
-        if (typeof cb === 'function') cb({ ok: false, error: `Nickname must be ${MAX_NICKNAME_LENGTH} characters or fewer` });
+        if (typeof cb === 'function') cb({ ok: false, error: `Takma ad en fazla ${MAX_NICKNAME_LENGTH} karakter olabilir` });
         return;
       }
       if (isProfane(nickname)) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Nickname not allowed' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Bu takma ad kullanılamaz' });
         return;
       }
       const room = rooms.get(roomId);
       if (!room) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Room not found' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oda bulunamadı' });
         return;
       }
       const prevRoomId = leaveCurrentRoom(socket);
@@ -438,13 +438,13 @@ export function attachSocketHandlers(io) {
         (p) => !p.disconnected && (p.nickname || '').toLowerCase() === (nickname || '').toLowerCase()
       );
       if (alreadyInRoom) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Nickname already in use' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Takma ad zaten kullanımda' });
         return;
       }
 
       const activePlayers = room.players.filter((p) => !p.disconnected);
       if (activePlayers.length >= MAX_PLAYERS) {
-        if (typeof cb === 'function') cb({ ok: false, error: `Room is full (max ${MAX_PLAYERS} players)` });
+        if (typeof cb === 'function') cb({ ok: false, error: `Oda dolu (maks ${MAX_PLAYERS} oyuncu)` });
         return;
       }
 
@@ -469,12 +469,12 @@ export function attachSocketHandlers(io) {
     socket.on(EVENTS.SET_READY, (payload, cb) => {
       const roomId = socketToRoom.get(socket.id);
       if (!roomId) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Not in a room' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Bir odada değilsiniz' });
         return;
       }
       const room = rooms.get(roomId);
       if (!room) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Room not found' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oda bulunamadı' });
         return;
       }
       const player = room.players.find((p) => p.socketId === socket.id);
@@ -488,26 +488,26 @@ export function attachSocketHandlers(io) {
     socket.on(EVENTS.START_GAME, (payload, cb) => {
       const roomId = socketToRoom.get(socket.id);
       if (!roomId) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Not in a room' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Bir odada değilsiniz' });
         return;
       }
       const room = rooms.get(roomId);
       if (!room) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Room not found' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oda bulunamadı' });
         return;
       }
       if (room.status === 'playing') {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Game already started' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oyun zaten başladı' });
         return;
       }
       if (room.hostId !== socket.id) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Only host can start the game' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Sadece ev sahibi oyunu başlatabilir' });
         return;
       }
       const active = room.players.filter((p) => !p.disconnected);
       const allReady = active.length >= 2 && active.every((p) => p.ready);
       if (!allReady) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'All players must be ready (min 2 players)' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Tüm oyuncular hazır olmalı (en az 2 oyuncu)' });
         return;
       }
       // Fetch syllable before mutating room state so we can abort cleanly if pool is empty
@@ -515,7 +515,7 @@ export function attachSocketHandlers(io) {
       try {
         firstSyllable = getRandomSyllable();
       } catch {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Syllable pool not ready' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Hece havuzu hazır değil' });
         return;
       }
       // Set status first so any concurrent START_GAME from another socket is rejected
@@ -558,17 +558,17 @@ export function attachSocketHandlers(io) {
       }
       const room = rooms.get(roomId);
       if (!room || room.status !== 'playing') {
-        reply({ ok: false, error: 'Game not in progress' });
+        reply({ ok: false, error: 'Oyun devam etmiyor' });
         return;
       }
       const currentPlayer = room.players[room.currentTurnIndex];
       if (!currentPlayer || currentPlayer.socketId !== socket.id) {
-        reply({ ok: false, error: 'Not your turn' });
+        reply({ ok: false, error: 'Senin sıran değil' });
         return;
       }
       const raw = typeof payload?.word === 'string' ? payload.word.trim() : '';
       if (raw.length > MAX_WORD_LENGTH || /[\x00-\x1f\x7f]/.test(raw)) {
-        reply({ ok: false, error: 'Invalid word' });
+        reply({ ok: false, error: 'Geçersiz kelime' });
         return;
       }
       const syllable = room.currentSyllable ?? '';
@@ -618,23 +618,23 @@ export function attachSocketHandlers(io) {
     socket.on(EVENTS.WORD_ATTEMPT, (payload, cb) => {
       const roomId = socketToRoom.get(socket.id);
       if (!roomId) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Not in a room' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Bir odada değilsiniz' });
         return;
       }
       const room = rooms.get(roomId);
       if (!room || room.status !== 'playing') {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Game not in progress' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oyun devam etmiyor' });
         return;
       }
       const currentPlayer = room.players[room.currentTurnIndex];
       if (!currentPlayer || currentPlayer.socketId !== socket.id) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Not your turn' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Senin sıran değil' });
         return;
       }
       // Reject rather than silently truncate so clients stay consistent
       const raw = typeof payload?.word === 'string' ? payload.word : '';
       if (raw.length > MAX_WORD_LENGTH || /[\x00-\x1f\x7f]/.test(raw)) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Invalid word' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Geçersiz kelime' });
         return;
       }
       const attempt = raw;
@@ -647,7 +647,7 @@ export function attachSocketHandlers(io) {
     });
 
     socket.on(EVENTS.BOMB_EXPLODED, (payload, cb) => {
-      if (typeof cb === 'function') cb({ ok: false, error: 'Bomb is server-authoritative' });
+      if (typeof cb === 'function') cb({ ok: false, error: 'Bomba sunucu tarafından yönetilir' });
     });
 
     socket.on('disconnect', (reason) => {
@@ -666,16 +666,16 @@ export function attachSocketHandlers(io) {
     socket.on(EVENTS.CHAT_MESSAGE, (payload, cb) => {
       const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
       if (!text) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Empty message' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Boş mesaj' });
         return;
       }
       if (isProfane(text)) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Message not allowed' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Mesaj gönderilemez' });
         return;
       }
       const roomId = socketToRoom.get(socket.id);
       if (!roomId) {
-        if (typeof cb === 'function') cb({ ok: false, error: 'Not in a room' });
+        if (typeof cb === 'function') cb({ ok: false, error: 'Bir odada değilsiniz' });
         return;
       }
       const room = rooms.get(roomId);

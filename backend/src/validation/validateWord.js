@@ -32,29 +32,29 @@ export function validateWord(word, syllable, usedWords = [], options = {}) {
   const normalizedSyllable = (typeof syllable === 'string' ? syllable : '').trim().toLocaleLowerCase('tr-TR').normalize('NFC');
 
   if (!normalizedWord) {
-    return { valid: false, reason: 'Word required' };
+    return { valid: false, reason: 'Kelime gerekli' };
   }
 
   if (!normalizedSyllable || !normalizedWord.includes(normalizedSyllable)) {
-    return { valid: false, reason: 'Word must contain the syllable' };
+    return { valid: false, reason: 'Kelime heceyi içermelidir' };
   }
 
   const { has } = options;
   if (typeof has !== 'function') {
-    return { valid: false, reason: 'Validation unavailable' };
+    return { valid: false, reason: 'Doğrulama kullanılamıyor' };
   }
 
   try {
     if (!has(normalizedWord)) {
-      return { valid: false, reason: 'Word not in dictionary' };
+      return { valid: false, reason: 'Kelime sözlükte yok' };
     }
   } catch {
-    return { valid: false, reason: 'Validation unavailable' };
+    return { valid: false, reason: 'Doğrulama kullanılamıyor' };
   }
 
   const used = Array.isArray(usedWords) ? usedWords : [];
   if (used.includes(normalizedWord)) {
-    return { valid: false, reason: 'Word already used this round' };
+    return { valid: false, reason: 'Bu turda kelime zaten kullanıldı' };
   }
 
   return { valid: true };

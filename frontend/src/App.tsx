@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSocket } from './context/SocketContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { I18nProvider } from './context/I18nContext';
 import { Lobby } from './components/Lobby';
 import { Game } from './components/Game';
 import { Dictionary } from './components/Dictionary';
@@ -32,9 +33,11 @@ function AppContent() {
 
 function App() {
   return (
-    <SettingsProvider>
-      <AppContent />
-    </SettingsProvider>
+    <I18nProvider>
+      <SettingsProvider>
+        <AppContent />
+      </SettingsProvider>
+    </I18nProvider>
   );
 }
 

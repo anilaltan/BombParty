@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useI18n } from '../context/I18nContext';
 
 const PAGE_SIZE = 2000;
 
@@ -33,6 +34,7 @@ function Highlight({ word, query }: { word: string; query: string }) {
 function PageControls({
   page, total, onChange,
 }: { page: number; total: number; onChange: (p: number) => void }) {
+  const { t } = useI18n();
   if (total <= 1) return null;
   const pages = Array.from({ length: total }, (_, i) => i + 1)
     .filter(p => Math.abs(p - page) <= 2 || p === 1 || p === total)
@@ -45,7 +47,7 @@ function PageControls({
   return (
     <div className="bp-dict-pagination">
       <button className="bp-dict-page-btn" onClick={() => onChange(1)}          disabled={page <= 1}>«</button>
-      <button className="bp-dict-page-btn" onClick={() => onChange(page - 1)}  disabled={page <= 1}>‹ Prev</button>
+      <button className="bp-dict-page-btn" onClick={() => onChange(page - 1)}  disabled={page <= 1}>{t.prev}</button>
       <div className="bp-dict-page-nums">
         {pages.map((p, i) =>
           p === '…'
@@ -57,13 +59,14 @@ function PageControls({
               >{p}</button>
         )}
       </div>
-      <button className="bp-dict-page-btn" onClick={() => onChange(page + 1)}  disabled={page >= total}>Next ›</button>
+      <button className="bp-dict-page-btn" onClick={() => onChange(page + 1)}  disabled={page >= total}>{t.next}</button>
       <button className="bp-dict-page-btn" onClick={() => onChange(total)}      disabled={page >= total}>»</button>
     </div>
   );
 }
 
 export function Dictionary({ onBack }: Props) {
+  const { t } = useI18n();
   const [allWords, setAllWords]         = useState<string[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
@@ -144,15 +147,15 @@ export function Dictionary({ onBack }: Props) {
       {/* ── Header ── */}
       <div className="bp-dict-header">
         <button type="button" className="bp-btn-secondary bp-dict-back-btn" onClick={onBack}>
-          ← Back
+          {t.back}
         </button>
         <div className="bp-dict-title-block">
-          <h1 className="bp-dict-title">Dictionary</h1>
+          <h1 className="bp-dict-title">{t.dictionaryTitle}</h1>
           <span className="bp-dict-subtitle">
-            {loading ? 'Loading…' : `${allWords.length.toLocaleString()} Turkish words`}
+            {loading ? t.loading : t.turkishWords(allWords.length.toLocaleString())}
           </span>
         </div>
-        <span className="bp-dict-esc-hint">ESC to go back</span>
+        <span className="bp-dict-esc-hint">{t.escHint}</span>
       </div>
 
       {/* ── Search ── */}
@@ -163,7 +166,7 @@ export function Dictionary({ onBack }: Props) {
             ref={searchRef}
             type="text"
             className="bp-dict-search-input"
-            placeholder="Search all words…"
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={handleSearchChange}
             autoFocus
@@ -181,11 +184,11 @@ export function Dictionary({ onBack }: Props) {
         {!loading && (
           <div className="bp-dict-result-badge">
             {(searchLower || letterFilter)
-              ? <><strong>{filtered.length.toLocaleString()}</strong> match{filtered.length !== 1 ? 'es' : ''}</>
-              : <><strong>{allWords.length.toLocaleString()}</strong> total words</>
+              ? <><strong>{filtered.length.toLocaleString()}</strong> {t.matchesSuffix(filtered.length)}</>
+              : <><strong>{allWords.length.toLocaleString()}</strong> {t.totalWordsSuffix}</>
             }
             {totalPages > 1 && (
-              <> · page <strong>{safePage}</strong>/{totalPages}</>
+              <> · {t.pageLabel} <strong>{safePage}</strong>/{totalPages}</>
             )}
           </div>
         )}
@@ -203,7 +206,7 @@ export function Dictionary({ onBack }: Props) {
               className={`bp-dict-alpha-btn${active ? ' active' : ''}${!count && !loading ? ' empty' : ''}`}
               onClick={() => handleLetterClick(char)}
               disabled={loading || count === 0}
-              title={loading ? 'Loading…' : count ? `${count.toLocaleString()} words` : 'No words'}
+              title={loading ? t.loading : count ? t.letterWords(count.toLocaleString()) : t.noWords}
             >
               {label}
               {!loading && count > 0 && (
@@ -219,7 +222,7 @@ export function Dictionary({ onBack }: Props) {
             type="button"
             className="bp-dict-clear-filter-btn"
             onClick={() => { setLetterFilter(null); setSearch(''); setPage(1); }}
-          >✕ Clear</button>
+          >{t.clear}</button>
         )}
       </div>
 
@@ -237,7 +240,7 @@ export function Dictionary({ onBack }: Props) {
           <div className="bp-dict-empty">
             <span className="bp-dict-empty-icon">📭</span>
             <span>
-              {search ? `No words found for "${search}"` : 'No words found'}
+              {search ? t.noWordsFoundFor(search) : t.noWordsFound}
             </span>
           </div>
         ) : (

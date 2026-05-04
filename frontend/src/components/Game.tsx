@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useSettings } from '../context/SettingsContext';
+import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
 import { getAvatarEmoji } from '../lib/avatars';
 import type { Player, ChatMessage } from '../types/game';
@@ -16,6 +17,7 @@ export function Game() {
     clearLastWordResult, clearGameEnd,
   } = useSocket();
   const { soundEnabled } = useSettings();
+  const { t } = useI18n();
 
   const [word, setWord] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -197,7 +199,7 @@ export function Game() {
   if (!connected) {
     return (
       <div className="bp-lobby">
-        <p style={{ color: 'var(--text-2)' }}>Connecting…</p>
+        <p style={{ color: 'var(--text-2)' }}>{t.connecting}</p>
       </div>
     );
   }
@@ -213,11 +215,11 @@ export function Game() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 56, marginBottom: 8 }}>{gameEnd.winner ? '💣' : '🤝'}</div>
           <h1 style={{ margin: '0 0 6px', fontSize: 30, fontWeight: 900, color: 'white' }}>
-            {gameEnd.winner ? (iWon ? 'You Win!' : 'Game Over') : 'Draw'}
+            {gameEnd.winner ? (iWon ? t.youWin : t.gameOver) : t.draw}
           </h1>
           {winner && (
             <p style={{ margin: 0, fontSize: 15, color: iWon ? 'var(--yellow)' : 'var(--text-2)' }}>
-              {winner.nickname?.trim() || winner.socketId.slice(0, 8)} wins!
+              {winner.nickname?.trim() || winner.socketId.slice(0, 8)} {t.wins}
             </p>
           )}
         </div>
@@ -230,7 +232,7 @@ export function Game() {
           overflow: 'hidden',
         }}>
           <div style={{ padding: '8px 16px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-            <span className="bp-section-label">Final scores</span>
+            <span className="bp-section-label">{t.finalScores}</span>
           </div>
           {sorted.map((p, i) => (
             <div key={p.socketId ?? i} className={`bp-end-score-row${p.socketId === gameEnd.winner ? ' winner-row' : ''}`}>
@@ -247,7 +249,7 @@ export function Game() {
         </div>
 
         <button type="button" className="bp-btn-secondary" style={{ minWidth: 180 }} onClick={clearGameEnd}>
-          Back to Lobby
+          {t.backToLobby}
         </button>
       </div>
     );
@@ -287,7 +289,7 @@ export function Game() {
         <span className="bp-room-pill">{roomId}</span>
         <div className="bp-player-count">{n}</div>
         <div style={{ flex: 1 }} />
-        <span className="bp-words-count">{wordsPlayed} words</span>
+        <span className="bp-words-count">{t.words(wordsPlayed)}</span>
         <div className="bp-header-sep" />
       </header>
 
@@ -372,7 +374,7 @@ export function Game() {
               <span className="bp-syllable">
                 {gameState.currentSyllable?.toLocaleUpperCase('tr-TR') ?? '—'}
               </span>
-              <span className="bp-syllable-hint">syllable</span>
+              <span className="bp-syllable-hint">{t.syllable}</span>
             </div>
           </div>
 
@@ -382,7 +384,7 @@ export function Game() {
               className="bp-feedback"
               style={{ color: lastWordResult.ok ? 'var(--green)' : 'var(--red)' }}
             >
-              {lastWordResult.ok ? '✓ Correct!' : lastWordResult.error}
+              {lastWordResult.ok ? t.correct : lastWordResult.error}
             </div>
           )}
         </div>
@@ -392,15 +394,15 @@ export function Game() {
       <aside className="bp-sidebar">
         {/* Stats */}
         <div className="bp-sidebar-header">
-          <span className="bp-section-label">Players</span>
+          <span className="bp-section-label">{t.players}</span>
         </div>
         <div style={{ overflowY: 'auto', maxHeight: '38%' }} className="bp-scroll">
           <table className="bp-stats-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Words</th>
-                <th>Lives</th>
+                <th>{t.name}</th>
+                <th>{t.wordsHeader}</th>
+                <th>{t.lives}</th>
               </tr>
             </thead>
             <tbody>
@@ -425,7 +427,7 @@ export function Game() {
 
         {/* Alphabet */}
         <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '8px 6px 4px' }}>
-          <div style={{ padding: '0 4px 4px' }}><span className="bp-section-label">Your letters</span></div>
+          <div style={{ padding: '0 4px 4px' }}><span className="bp-section-label">{t.yourLetters}</span></div>
           <div className="bp-alphabet">
             {ALPHABET.map(letter => (
               <div key={letter} className={`bp-letter ${myUsedLetters.has(letter) ? 'used' : 'unused'}`}>
@@ -438,11 +440,11 @@ export function Game() {
         {/* Chat */}
         <div className="bp-chat">
           <div style={{ padding: '6px 10px 4px', borderBottom: '1px solid var(--border)' }}>
-            <span className="bp-section-label">Chat</span>
+            <span className="bp-section-label">{t.chat}</span>
           </div>
           <div className="bp-chat-messages">
             {chatMessages.length === 0 && (
-              <span style={{ color: 'var(--text-3)', fontSize: 11 }}>No messages yet…</span>
+              <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{t.noMessages}</span>
             )}
             {chatMessages.map(msg => (
               <div key={msg.id} className={`bp-chat-msg ${msg.type}`}>
@@ -459,7 +461,7 @@ export function Game() {
             <input
               type="text"
               className="bp-chat-input"
-              placeholder="Chat…"
+              placeholder={t.chatPlaceholder}
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
             />
@@ -469,7 +471,7 @@ export function Game() {
 
       {/* ── Bottom bar ── */}
       <div className="bp-bottom-bar">
-        {isMyTurn && <span className="bp-your-turn">Your Turn</span>}
+        {isMyTurn && <span className="bp-your-turn">{t.yourTurn}</span>}
         <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', gap: 8, maxWidth: 540, margin: '0 auto' }}>
           <input
             ref={wordInputRef}
@@ -477,13 +479,13 @@ export function Game() {
             className="bp-word-input"
             value={word}
             onChange={e => setWord(e.target.value)}
-            placeholder={isMyTurn ? 'Type a word…' : 'Waiting for your turn…'}
+            placeholder={isMyTurn ? t.typeWord : t.waitingTurn}
             disabled={!isMyTurn || submitting}
             autoComplete="off"
           />
           {isMyTurn && (
             <button type="submit" className="bp-submit-btn" disabled={submitting || !word.trim()}>
-              Send
+              {t.send}
             </button>
           )}
         </form>

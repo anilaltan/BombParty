@@ -38,7 +38,7 @@ const dictLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please slow down.' },
+  message: { error: 'Çok fazla istek, lütfen yavaşlayın.' },
 });
 
 app.get('/api/dictionary', dictLimiter, (req, res) => {
@@ -50,7 +50,7 @@ app.get('/api/dictionary', dictLimiter, (req, res) => {
     const slice = words.slice(start, start + limit);
     res.json({ words: slice, total: words.length });
   } catch (e) {
-    res.status(500).json({ error: 'Dictionary not loaded' });
+    res.status(500).json({ error: 'Sözlük yüklenmedi' });
   }
 });
 
