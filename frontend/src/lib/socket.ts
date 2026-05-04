@@ -15,6 +15,7 @@ export const EVENTS = {
   WORD_RESULT: 'wordResult',
   BOMB_EXPLODED: 'bombExploded',
   GAME_END: 'gameEnd',
+  CHAT_MESSAGE: 'chatMessage',
 } as const;
 
 const SOCKET_URL =

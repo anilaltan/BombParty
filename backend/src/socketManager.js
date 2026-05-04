@@ -65,6 +65,7 @@ const EVENTS = {
   WORD_RESULT: 'wordResult',
   BOMB_EXPLODED: 'bombExploded',
   GAME_END: 'gameEnd',
+  CHAT_MESSAGE: 'chatMessage',
 };
 
 function clampMs(value) {
@@ -662,13 +663,32 @@ export function attachSocketHandlers(io) {
       }
     });
 
-    socket.on('message', (payload, cb) => {
+    socket.on(EVENTS.CHAT_MESSAGE, (payload, cb) => {
       const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
-      if (text && isProfane(text)) {
+      if (!text) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Empty message' });
+        return;
+      }
+      if (isProfane(text)) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Message not allowed' });
         return;
       }
-      if (typeof cb === 'function') cb({ ok: true, echo: payload });
+      const roomId = socketToRoom.get(socket.id);
+      if (!roomId) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Not in a room' });
+        return;
+      }
+      const room = rooms.get(roomId);
+      const sender = room?.players.find((p) => p.socketId === socket.id);
+      const message = {
+        id: `${socket.id}-${Date.now()}-${Math.random()}`,
+        senderId: socket.id,
+        sender: sender?.nickname ?? socket.id.slice(0, 8),
+        text,
+        timestamp: Date.now(),
+      };
+      io.to(roomId).emit(EVENTS.CHAT_MESSAGE, message);
+      if (typeof cb === 'function') cb({ ok: true });
     });
   });
 }

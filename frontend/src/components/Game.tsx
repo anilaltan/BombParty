@@ -156,18 +156,21 @@ export function Game() {
     });
   };
 
+  // Incoming chat messages from other players (and echo of own messages)
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (msg: { id: string; senderId: string; sender: string; text: string; timestamp: number }) => {
+      setChatMessages(prev => [...prev.slice(-100), { ...msg, type: 'chat' as const }]);
+    };
+    socket.on(EVENTS.CHAT_MESSAGE, handler);
+    return () => { socket.off(EVENTS.CHAT_MESSAGE, handler); };
+  }, [socket]);
+
   const handleChat = (e: React.SyntheticEvent) => {
     e.preventDefault();
     const text = chatInput.trim();
     if (!text) return;
-    const me = players.find(p => p.socketId === socket?.id);
-    setChatMessages(prev => [...prev.slice(-100), {
-      id: `${Date.now()}-${Math.random()}`,
-      sender: me?.nickname ?? socket?.id?.slice(0, 8) ?? 'You',
-      text,
-      timestamp: Date.now(),
-      type: 'chat',
-    }]);
+    socket?.emit(EVENTS.CHAT_MESSAGE, { text });
     setChatInput('');
   };
 
