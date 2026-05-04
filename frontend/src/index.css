@@ -810,13 +810,288 @@ body {
 .bp-end-score-row.winner-row { background: rgba(251,191,36,0.06); }
 
 /* ─── Dictionary ─────────────────────────────────────────────── */
-.bp-dict {
+.bp-dict-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  overflow: hidden;
+}
+
+/* Header */
+.bp-dict-header {
+  display: flex;
+  align-items: center;
   gap: 14px;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.bp-dict-back-btn { flex-shrink: 0; }
+.bp-dict-title-block { flex: 1; }
+.bp-dict-title {
+  margin: 0 0 2px;
+  font-size: 22px;
+  font-weight: 900;
+  color: white;
+  line-height: 1;
+}
+.bp-dict-subtitle {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.bp-dict-esc-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+/* Search row */
+.bp-dict-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  flex-shrink: 0;
+}
+.bp-dict-search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+.bp-dict-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--text-3);
+  pointer-events: none;
+  line-height: 1;
+}
+.bp-dict-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.bp-dict-search-input:focus { border-color: var(--cyan); }
+.bp-dict-search-input::placeholder { color: var(--text-3); }
+.bp-dict-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.bp-dict-clear-btn:hover { color: var(--text); }
+.bp-dict-result-badge {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bp-dict-result-badge strong { color: var(--cyan); }
+
+/* Alphabet filter */
+.bp-dict-alphabet-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 24px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  align-items: center;
+}
+.bp-dict-alpha-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 36px;
+  padding: 0 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  line-height: 1;
+}
+.bp-dict-alpha-btn:hover:not(:disabled):not(.active) {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--border-2);
+}
+.bp-dict-alpha-btn.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+}
+.bp-dict-alpha-btn.empty {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.bp-dict-alpha-count {
+  font-size: 8px;
+  font-weight: 600;
+  color: inherit;
+  opacity: 0.65;
+  line-height: 1;
+  margin-top: 1px;
+}
+.bp-dict-clear-filter-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-left: 4px;
+  height: 36px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.bp-dict-clear-filter-btn:hover { color: var(--text); border-color: var(--border-2); }
+
+/* Body / word grid */
+.bp-dict-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+.bp-dict-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bp-dict-word {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 5px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--text-2);
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s;
+}
+.bp-dict-word:hover {
+  background: var(--surface-2);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+.bp-dict-word-len {
+  font-size: 9px;
+  color: var(--text-3);
+  font-family: monospace;
+  flex-shrink: 0;
+}
+.bp-dict-mark {
+  background: rgba(34,211,238,0.25);
+  color: var(--cyan);
+  border-radius: 2px;
+  padding: 0 1px;
+  font-style: normal;
+}
+
+/* Skeleton */
+.bp-dict-skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bp-dict-skeleton-chip {
+  height: 30px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* Empty state */
+.bp-dict-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 24px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+.bp-dict-empty-icon { font-size: 36px; }
+
+/* Pagination */
+.bp-dict-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.bp-dict-page-nums {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bp-dict-page-btn {
+  min-width: 34px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.bp-dict-page-btn:hover:not(:disabled):not(.active) {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--border-2);
+}
+.bp-dict-page-btn.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: white;
+  font-weight: 700;
+}
+.bp-dict-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.bp-dict-page-ellipsis {
+  color: var(--text-3);
+  font-size: 13px;
+  padding: 0 4px;
 }
 
 /* ─── Settings ───────────────────────────────────────────────── */
