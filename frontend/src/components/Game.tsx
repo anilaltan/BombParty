@@ -6,7 +6,7 @@ import { getAvatarEmoji } from '../lib/avatars';
 import type { Player, ChatMessage } from '../types/game';
 
 const DEFAULT_TURN_DURATION_MS = 15000;
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const ALPHABET = ['A','B','C','Ç','D','E','F','G','Ğ','H','I','İ','J','K','L','M','N','O','Ö','P','R','S','Ş','T','U','Ü','V','Y','Z'];
 
 
 export function Game() {
@@ -171,14 +171,11 @@ export function Game() {
     setChatInput('');
   };
 
-  // Letters used across all round words
-  const roundUsedLetters = useMemo(() => {
-    const s = new Set<string>();
-    for (const w of gameState?.usedWords ?? [])
-      for (const c of w.toUpperCase())
-        if (/[A-ZÇĞIİÖŞÜ]/.test(c)) s.add(c);
-    return s;
-  }, [gameState?.usedWords]);
+  // Letters used by the current player (per-player tracking)
+  const myUsedLetters = useMemo(() => {
+    const myPlayer = players.find(p => p.socketId === socket?.id);
+    return new Set<string>(myPlayer?.usedLetters ?? []);
+  }, [players, socket?.id]);
 
   // Player positions around the arena
   const playerPositions = useMemo(() => {
@@ -314,7 +311,7 @@ export function Game() {
                   {active && <div className="bp-active-ring" />}
                 </div>
                 <div className="bp-hearts">
-                  {Array.from({ length: 3 }).map((_, li) => (
+                  {Array.from({ length: Math.max(p.lives, 3) }).map((_, li) => (
                     <span key={li} className={`bp-heart${li >= p.lives ? ' lost' : ''}`}>♥</span>
                   ))}
                 </div>
@@ -425,10 +422,10 @@ export function Game() {
 
         {/* Alphabet */}
         <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '8px 6px 4px' }}>
-          <div style={{ padding: '0 4px 4px' }}><span className="bp-section-label">Used letters</span></div>
+          <div style={{ padding: '0 4px 4px' }}><span className="bp-section-label">Your letters</span></div>
           <div className="bp-alphabet">
             {ALPHABET.map(letter => (
-              <div key={letter} className={`bp-letter ${roundUsedLetters.has(letter) ? 'used' : 'unused'}`}>
+              <div key={letter} className={`bp-letter ${myUsedLetters.has(letter) ? 'used' : 'unused'}`}>
                 {letter}
               </div>
             ))}

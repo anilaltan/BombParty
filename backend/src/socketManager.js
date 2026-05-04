@@ -22,6 +22,10 @@ const MAX_PLAYERS = 12;
 const MAX_NICKNAME_LENGTH = 20;
 const MAX_WORD_LENGTH = 64;
 
+const TURKISH_ALPHABET = ['A','B','C','Ç','D','E','F','G','Ğ','H','I','İ','J','K','L','M','N','O','Ö','P','R','S','Ş','T','U','Ü','V','Y','Z'];
+const TURKISH_ALPHABET_SET = new Set(TURKISH_ALPHABET);
+const TURKISH_ALPHABET_SIZE = TURKISH_ALPHABET.length;
+
 /**
  * @typedef {Object} GamePlayer
  * @property {string} socketId
@@ -128,6 +132,7 @@ function broadcastPlayerList(io, roomId) {
       lives: p.lives ?? 0,
       score: p.score ?? 0,
       isEliminated: p.isEliminated ?? false,
+      usedLetters: p.usedLetters ?? [],
     }));
   io.to(roomId).emit(EVENTS.PLAYER_LIST, list);
 }
@@ -161,6 +166,7 @@ function broadcastGameState(io, roomId) {
       lives: p.lives ?? 0,
       score: p.score ?? 0,
       isEliminated: p.isEliminated ?? false,
+      usedLetters: p.usedLetters ?? [],
     })),
   };
   io.to(roomId).emit(EVENTS.GAME_STATE, payload);
@@ -357,6 +363,7 @@ export function attachSocketHandlers(io) {
         lives: 0,
         score: 0,
         isEliminated: false,
+        usedLetters: [],
       };
       rooms.set(newId, {
         hostId: socket.id,
@@ -449,6 +456,7 @@ export function attachSocketHandlers(io) {
         lives: 0,
         score: 0,
         isEliminated: false,
+        usedLetters: [],
       });
       socketToRoom.set(socket.id, roomId);
 
@@ -516,6 +524,7 @@ export function attachSocketHandlers(io) {
         p.lives = lives;
         p.score = 0;
         p.isEliminated = false;
+        p.usedLetters = [];
       });
       room.currentTurnIndex = getFirstActiveTurnIndex(room);
       room.currentAttempt = '';
@@ -580,6 +589,20 @@ export function attachSocketHandlers(io) {
       room.usedWordsByPlayer[socket.id].push(word);
       room.currentAttempt = '';
       currentPlayer.score = (currentPlayer.score ?? 0) + 1;
+
+      // Track per-player used letters (Turkish alphabet)
+      const playerLetterSet = new Set(currentPlayer.usedLetters ?? []);
+      for (const ch of word) {
+        const upper = ch.toLocaleUpperCase('tr-TR');
+        if (TURKISH_ALPHABET_SET.has(upper)) playerLetterSet.add(upper);
+      }
+      if (playerLetterSet.size >= TURKISH_ALPHABET_SIZE) {
+        currentPlayer.usedLetters = [];
+        currentPlayer.lives = (currentPlayer.lives ?? 0) + 1;
+      } else {
+        currentPlayer.usedLetters = Array.from(playerLetterSet);
+      }
+
       const nextIdx = getNextTurnIndex(room);
       room.currentTurnIndex = nextIdx >= 0 ? nextIdx : room.currentTurnIndex;
       if (room.turnTimer) {
