@@ -325,7 +325,7 @@ export function Game() {
       <header className="bp-header">
         <div className="bp-logo">
           <span>💣</span>
-          <span>BombParty</span>
+          <span>Bomb<span className="bp-logo-accent">Party</span></span>
         </div>
         <span className="bp-header-version">v{__APP_VERSION__}</span>
         <div className="bp-header-sep" />
@@ -368,17 +368,17 @@ export function Game() {
             >
               <defs>
                 <marker id="ah" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                  <polygon points="0 0,10 3.5,0 7" fill="var(--red)" />
+                  <polygon points="0 0,10 3.5,0 7" fill="var(--yellow)" />
                 </marker>
                 <filter id="glow">
-                  <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="var(--red)" floodOpacity="0.7" />
+                  <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="var(--yellow)" floodOpacity="0.6" />
                 </filter>
               </defs>
               <line
                 x1={cx} y1={cy}
                 x2={cx + arrowLength * Math.cos(arrowAngle)}
                 y2={cy + arrowLength * Math.sin(arrowAngle)}
-                stroke="var(--red)"
+                stroke="var(--yellow)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 markerEnd="url(#ah)"

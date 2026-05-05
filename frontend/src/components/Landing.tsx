@@ -23,6 +23,16 @@ export function Landing({ onPlay, onDictionary }: Props) {
 
   return (
     <div className="lp-root">
+
+      {/* Nav */}
+      <nav className="lp-nav">
+        <div className="lp-nav-logo">
+          <span>💣</span>
+          <span>Bomb<span className="lp-nav-accent">Party</span></span>
+        </div>
+        <button className="lp-nav-btn" onClick={onPlay}>{t.landingCta}</button>
+      </nav>
+
       {/* Hero */}
       <section className="lp-hero">
         <div className="lp-hero-inner">
@@ -30,7 +40,10 @@ export function Landing({ onPlay, onDictionary }: Props) {
             <span className="lp-badge">{t.landingNoBadge}</span>
             <h1 className="lp-headline">{t.landingHeadline}</h1>
             <p className="lp-subline">{t.landingSubline}</p>
-            <button className="lp-cta-btn" onClick={onPlay}>{t.landingCta}</button>
+            <div className="lp-cta-row">
+              <button className="lp-cta-btn" onClick={onPlay}>{t.landingCta}</button>
+              <button className="lp-cta-secondary" onClick={onDictionary}>{t.landingDictBtn}</button>
+            </div>
           </div>
           <div className="lp-hero-visual">
             <div className="lp-bomb-wrap">
@@ -50,6 +63,7 @@ export function Landing({ onPlay, onDictionary }: Props) {
 
       {/* How it works */}
       <section className="lp-section">
+        <span className="lp-section-eyebrow">{t.landingHowTitle}</span>
         <h2 className="lp-section-title">{t.landingHowTitle}</h2>
         <div className="lp-steps">
           {steps.map((s, i) => (
@@ -89,13 +103,14 @@ export function Landing({ onPlay, onDictionary }: Props) {
       <footer className="lp-footer">
         <div className="lp-footer-logo">
           <span>💣</span>
-          <span>BOMB<span className="lp-footer-accent">PARTY</span></span>
+          <span>Bomb<span className="lp-footer-accent">Party</span></span>
         </div>
         <p className="lp-footer-tagline">{t.landingFooterTag}</p>
         <div className="lp-footer-links">
           <button className="lp-footer-link" onClick={onDictionary}>{t.landingDictBtn}</button>
         </div>
       </footer>
+
     </div>
   );
 }

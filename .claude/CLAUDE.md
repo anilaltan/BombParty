@@ -505,3 +505,100 @@ Semantic H1 with keyword — add <h1 className="sr-only">BombParty - Ücretsiz �
 Static /rules or /about page in Turkish (300+ words) — the game UI is JavaScript-heavy and uncrawlable; this gives Google actual text content with your target keywords
 
 The dictionary page (/dictionary) is a hidden SEO asset — it's a massive crawlable word list that will naturally rank for Turkish vocabulary queries over time. Make sure it's in the sitemap.
+
+## Brand & Design System
+
+### Brand Name
+
+KelimeBombası
+
+### Logo
+
+- Primary logo: /assets/logo-primary.png
+- Icon: /assets/logo-icon.png
+- Variants:
+  - Light background version
+  - Dark background version
+  - Icon-only version
+
+Rules:
+
+- Do not stretch or distort logo
+- Always keep padding around logo
+- Use icon version in small UI areas
+
+---
+
+### Colors
+
+Primary:
+
+- Yellow: #FFD600
+- Dark: #1E202D
+
+Accent:
+
+- Brown: #5A3421
+- Orange: #FF5C1A
+
+Neutral:
+
+- White: #FFFFFF
+- Gray: #6B7280
+
+Rules:
+
+- Do not introduce new colors unless necessary
+
+---
+
+### Typography
+
+Logo:
+
+- Nunito ExtraBold (Rounded Bold Sans-serif)
+
+Font:
+
+- Primary: Inter/Plus Jakarta Sans
+
+Usage:
+
+- Headline: bold
+- Body: regular
+- Buttons: medium
+
+Rules:
+
+- Keep text readable
+- Avoid too many font weights
+- Maintain consistency across pages
+
+---
+
+### UI Style
+
+- Minimal and clean
+- Playful but not childish
+- Fast and responsive
+- Mobile-first
+
+---
+
+### Tone of Voice
+
+- Casual Turkish
+- Energetic
+- Short sentences
+- Action-oriented
+
+Example:
+"Bombayı patlatmadan kelimeyi bul!"
+
+## Design Enforcement Rules
+
+- Always follow the Brand & Design System
+- Do not create new styles outside defined system
+- Reuse existing colors, fonts, and components
+- Keep UI consistent with game style
+- If unsure, ask instead of inventing
