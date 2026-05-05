@@ -79,6 +79,25 @@ export type Translations = {
   soundDesc: string;
   language: string;
   langDesc: string;
+  landingHeadline: string;
+  landingSubline: string;
+  landingNoBadge: string;
+  landingCta: string;
+  landingHowTitle: string;
+  landingStep1Title: string;
+  landingStep1Desc: string;
+  landingStep2Title: string;
+  landingStep2Desc: string;
+  landingStep3Title: string;
+  landingStep3Desc: string;
+  landingFeatTitle: string;
+  landingFeat1: string;
+  landingFeat2: string;
+  landingFeat3: string;
+  landingFeat4: string;
+  landingStartBtn: string;
+  landingDictBtn: string;
+  landingFooterTag: string;
 };
 
 export const translations: Record<Lang, Translations> = {
@@ -161,6 +180,25 @@ export const translations: Record<Lang, Translations> = {
     soundDesc: 'Tick sounds and word feedback',
     language: 'Language',
     langDesc: 'Switch between Turkish and English',
+    landingHeadline: 'Find the Word Before the Bomb Explodes — Now',
+    landingSubline: 'In BombParty, every second counts. Each turn you must type a word containing the displayed syllable — or the bomb goes off. Play live with friends, test your Turkish vocabulary, and be the last one standing.',
+    landingNoBadge: 'No sign-up required',
+    landingCta: 'Play Now',
+    landingHowTitle: 'How It Works',
+    landingStep1Title: 'Start Your Turn',
+    landingStep1Desc: 'Create a room or share the link — friends join instantly, no account needed.',
+    landingStep2Title: 'Type a Word',
+    landingStep2Desc: 'Write a Turkish word that contains the displayed syllable before the timer runs out.',
+    landingStep3Title: 'Score or Explode',
+    landingStep3Desc: 'Correct words push you ahead. Run out of time and you lose a life. Last one standing wins.',
+    landingFeatTitle: 'Why BombParty?',
+    landingFeat1: '2–12 players, real-time multiplayer',
+    landingFeat2: 'No sign-up — runs entirely in your browser',
+    landingFeat3: 'Turkish alphabet bonus (all 29 letters)',
+    landingFeat4: 'Completely free',
+    landingStartBtn: 'Start Playing',
+    landingDictBtn: 'Browse Dictionary',
+    landingFooterTag: 'Find your word before the bomb goes off.',
   },
   tr: {
     connecting: 'Bağlanıyor…',
@@ -241,5 +279,24 @@ export const translations: Record<Lang, Translations> = {
     soundDesc: 'Tık sesleri ve kelime geri bildirimi',
     language: 'Dil',
     langDesc: 'Türkçe ve İngilizce arasında geçiş yap',
+    landingHeadline: 'Bombayı Patlatmadan Kelime Bul — Şimdi',
+    landingSubline: "BombParty'de saniyeler sayılı. Her tur yeni bir heceyi yazmanız gerekiyor, yoksa bomba patlar. Arkadaşlarınızla canlı oynayın, Türkçe bilginizi test edin ve son kalan oyuncu kazansın.",
+    landingNoBadge: 'Kayıt gerekmez',
+    landingCta: 'Hemen Oyna',
+    landingHowTitle: 'Nasıl Oynanır?',
+    landingStep1Title: 'Sıra Başla',
+    landingStep1Desc: 'Oda oluştur ya da bağlantıyı paylaş — arkadaşların hesap açmadan anında katılır.',
+    landingStep2Title: 'Sözcük Yaz',
+    landingStep2Desc: 'Gösterilen heceyi içeren Türkçe bir kelime yaz, süre dolmadan gönder.',
+    landingStep3Title: 'Puan Kazan veya Bomba Patla',
+    landingStep3Desc: 'Doğru kelimeler seni öne geçirir. Süre dolarsa bir can kaybedersin. Son kalan kazanır.',
+    landingFeatTitle: 'Neden BombParty?',
+    landingFeat1: '2–12 oyuncu, gerçek zamanlı çok oyunculu',
+    landingFeat2: 'Kayıt yok — tamamen tarayıcında çalışır',
+    landingFeat3: 'Türkçe alfabe bonusu (tüm 29 harf)',
+    landingFeat4: 'Tamamen ücretsiz',
+    landingStartBtn: 'Oyuna Başla',
+    landingDictBtn: 'Sözlüğü Gözat',
+    landingFooterTag: 'Bomba patlamadan önce kelimeni bul.',
   },
 };

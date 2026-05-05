@@ -2,19 +2,28 @@ import { useState } from 'react';
 import { useSocket } from './context/SocketContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { I18nProvider } from './context/I18nContext';
+import { Landing } from './components/Landing';
 import { Lobby } from './components/Lobby';
 import { Game } from './components/Game';
 import { Dictionary } from './components/Dictionary';
 import { Settings } from './components/Settings';
 
-type View = 'main' | 'dictionary' | 'settings';
+type View = 'landing' | 'main' | 'dictionary' | 'settings';
 
 function AppContent() {
   const { gameState, gameEnd } = useSocket();
-  const [view, setView] = useState<View>('main');
+  const [view, setView] = useState<View>('landing');
   const inGame = gameState?.status === 'playing';
   const showGame = inGame || !!gameEnd;
 
+  if (view === 'landing') {
+    return (
+      <Landing
+        onPlay={() => setView('main')}
+        onDictionary={() => setView('dictionary')}
+      />
+    );
+  }
   if (view === 'dictionary') {
     return <Dictionary onBack={() => setView('main')} />;
   }
