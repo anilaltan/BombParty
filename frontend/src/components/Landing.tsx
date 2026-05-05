@@ -28,7 +28,7 @@ export function Landing({ onPlay, onDictionary }: Props) {
       <nav className="lp-nav">
         <div className="lp-nav-logo">
           <span>💣</span>
-          <span>Bomb<span className="lp-nav-accent">Party</span></span>
+          <span>Kelime<span className="lp-nav-accent">Bombası</span></span>
         </div>
         <button className="lp-nav-btn" onClick={onPlay}>{t.landingCta}</button>
       </nav>
@@ -103,7 +103,7 @@ export function Landing({ onPlay, onDictionary }: Props) {
       <footer className="lp-footer">
         <div className="lp-footer-logo">
           <span>💣</span>
-          <span>Bomb<span className="lp-footer-accent">Party</span></span>
+          <span>Kelime<span className="lp-footer-accent">Bombası</span></span>
         </div>
         <p className="lp-footer-tagline">{t.landingFooterTag}</p>
         <div className="lp-footer-links">

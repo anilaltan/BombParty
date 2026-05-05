@@ -325,7 +325,7 @@ export function Game() {
       <header className="bp-header">
         <div className="bp-logo">
           <span>💣</span>
-          <span>Bomb<span className="bp-logo-accent">Party</span></span>
+          <span>Kelime<span className="bp-logo-accent">Bombası</span></span>
         </div>
         <span className="bp-header-version">v{__APP_VERSION__}</span>
         <div className="bp-header-sep" />
