@@ -150,6 +150,7 @@ body {
   color: white;
 }
 .bp-logo .bp-logo-accent { color: var(--yellow); }
+.bp-logo img { height: 30px; width: auto; display: block; }
 
 .bp-header-version {
   font-size: 10px;
@@ -614,6 +615,13 @@ body {
   padding: 32px 16px;
   gap: 24px;
   overflow-y: auto;
+}
+
+.bp-brand-logo {
+  height: 80px;
+  width: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 .bp-brand h1 {
@@ -1189,6 +1197,7 @@ body {
   color: white;
 }
 .lp-nav-logo .lp-nav-accent { color: var(--yellow); }
+.lp-nav-logo img { height: 36px; width: auto; display: block; }
 .lp-nav-btn {
   background: var(--yellow);
   color: #1E202D;
@@ -1518,6 +1527,7 @@ body {
   flex-shrink: 0;
 }
 .lp-footer-accent { color: var(--yellow); }
+.lp-footer-logo img { height: 28px; width: auto; display: block; }
 .lp-footer-tagline {
   margin: 0;
   font-size: 12px;

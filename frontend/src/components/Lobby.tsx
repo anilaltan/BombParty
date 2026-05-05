@@ -114,6 +114,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
 
         {/* Brand */}
         <div className="bp-brand" style={{ textAlign: 'center' }}>
+          <img src="/white-icon.png" alt="KelimeBombası" className="bp-brand-logo" />
           <h1>Kelime<span>Bombası</span></h1>
           <p>{t.tagline}</p>
           <div className="bp-brand-version">v{__APP_VERSION__}</div>
