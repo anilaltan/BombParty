@@ -5,6 +5,7 @@
  * @param {import('socket.io').Server} io
  */
 
+import { randomInt } from 'crypto';
 import { getRandomSyllable, has as dictionaryHas } from './dictionary/index.js';
 import { normalizeTurkishLower } from './dictionary/filter.js';
 import { validateWord } from './validation/validateWord.js';
@@ -21,6 +22,8 @@ const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const MAX_PLAYERS = 12;
 const MAX_NICKNAME_LENGTH = 20;
 const MAX_WORD_LENGTH = 64;
+const MAX_CHAT_LENGTH = 200;
+const VALID_AVATAR_IDS = new Set(['1', '2', '3', '4', '5', '6']);
 
 const TURKISH_ALPHABET = ['A','B','C','Ç','D','E','F','G','Ğ','H','I','İ','J','K','L','M','N','O','Ö','P','R','S','Ş','T','U','Ü','V','Y','Z'];
 const TURKISH_ALPHABET_SET = new Set(TURKISH_ALPHABET);
@@ -42,7 +45,7 @@ const TURKISH_ALPHABET_SIZE = TURKISH_ALPHABET.length;
  * @property {GamePlayer[]} players
  * @property {'waiting'|'playing'} [status]
  * @property {string|null} [currentSyllable]
- * @property {string[]} [usedWords]
+ * @property {Set<string>} [usedWords]
  * @property {number} [currentTurnIndex]
  * @type {Map<string, GameRoom>}
  */
@@ -67,6 +70,34 @@ const EVENTS = {
   GAME_END: 'gameEnd',
   CHAT_MESSAGE: 'chatMessage',
 };
+
+const RATE_LIMITS = {
+  WORD_ATTEMPT:  { maxCalls: 20, windowMs: 1000 },
+  SUBMIT_WORD:   { maxCalls: 10, windowMs: 1000 },
+  CHAT_MESSAGE:  { maxCalls: 5,  windowMs: 5000 },
+  SET_READY:     { maxCalls: 5,  windowMs: 5000 },
+};
+
+/**
+ * Fixed-window per-socket rate limiter. State stored in socket.data (auto-cleaned on disconnect).
+ * @param {import('socket.io').Socket} socket
+ * @param {string} key
+ * @param {number} maxCalls
+ * @param {number} windowMs
+ * @returns {boolean} true if the call is allowed
+ */
+function checkRateLimit(socket, key, maxCalls, windowMs) {
+  const now = Date.now();
+  if (!socket.data.rateLimits) socket.data.rateLimits = {};
+  const entry = socket.data.rateLimits[key];
+  if (!entry || now - entry.windowStart >= windowMs) {
+    socket.data.rateLimits[key] = { count: 1, windowStart: now };
+    return true;
+  }
+  if (entry.count >= maxCalls) return false;
+  entry.count++;
+  return true;
+}
 
 function clampMs(value) {
   const num = Number(value);
@@ -110,7 +141,7 @@ function getTurnDurationMs(room) {
 function generateRoomId() {
   let id = '';
   for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
-    id += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+    id += ROOM_CODE_CHARS[randomInt(ROOM_CODE_CHARS.length)];
   }
   return rooms.has(id) ? generateRoomId() : id;
 }
@@ -152,7 +183,7 @@ function broadcastGameState(io, roomId) {
     status: room.status,
     currentSyllable: room.currentSyllable ?? null,
     currentAttempt: room.currentAttempt ?? '',
-    usedWords: room.usedWords ?? [],
+    usedWords: room.usedWords ? [...room.usedWords] : [],
     usedWordsByPlayer: room.usedWordsByPlayer ?? {},
     currentPlayerId: currentPlayer?.disconnected ? null : (currentPlayer?.socketId ?? null),
     turnDurationMs: room.currentTurnDurationMs ?? null,
@@ -268,9 +299,10 @@ function startNextTurn(io, roomId) {
 /**
  * Remove socket from its current room and clean up. Caller must still handle socket.leave(roomId).
  * @param {import('socket.io').Socket} socket
+ * @param {import('socket.io').Server} io
  * @returns {string | null} roomId left, or null
  */
-function leaveCurrentRoom(socket) {
+function leaveCurrentRoom(socket, io) {
   const roomId = socketToRoom.get(socket.id);
   if (!roomId) return null;
   const room = rooms.get(roomId);
@@ -278,11 +310,46 @@ function leaveCurrentRoom(socket) {
     socketToRoom.delete(socket.id);
     return null;
   }
+  const leavingIdx = room.players.findIndex((p) => p.socketId === socket.id);
   room.players = room.players.filter((p) => p.socketId !== socket.id);
   socketToRoom.delete(socket.id);
   if (room.players.length === 0) {
+    if (room.turnTimer) room.turnTimer.cancel();
     rooms.delete(roomId);
     return roomId;
+  }
+  if (room.status === 'playing' && leavingIdx !== -1) {
+    if (leavingIdx === room.currentTurnIndex) {
+      if (room.turnTimer) {
+        room.turnTimer.cancel();
+        room.turnTimer = null;
+      }
+      // After removal the player previously at leavingIdx+1 sits at leavingIdx.
+      // getNextTurnIndex starts from (currentTurnIndex+1), so position one before that slot.
+      const beforeLeaving = (leavingIdx - 1 + room.players.length) % room.players.length;
+      room.currentTurnIndex = beforeLeaving;
+      const nextIdx = getNextTurnIndex(room);
+      room.currentTurnIndex = nextIdx >= 0 ? nextIdx : 0;
+      const remaining = room.players.filter((p) => !p.isEliminated);
+      if (remaining.length <= 1) {
+        const winner = remaining[0] ?? null;
+        const finalScores = room.players.map((p) => ({
+          socketId: p.socketId,
+          nickname: p.nickname,
+          avatarId: p.avatarId,
+          score: p.score ?? 0,
+          isEliminated: p.isEliminated,
+        }));
+        if (io) io.to(roomId).emit(EVENTS.GAME_END, { winner: winner?.socketId ?? null, players: finalScores });
+        room.status = 'waiting';
+        room.turnExpiresAt = null;
+      } else if (io) {
+        startNextTurn(io, roomId);
+      }
+    } else if (leavingIdx < room.currentTurnIndex) {
+      // Removed player was before the current turn holder; shift the index to keep it accurate.
+      room.currentTurnIndex--;
+    }
   }
   return roomId;
 }
@@ -324,6 +391,18 @@ function markPlayerDisconnected(socket) {
 /** Game events: startGame (host), submitWord { word }, bombExploded; server emits gameState, wordResult, gameEnd */
 export { EVENTS };
 
+/** Cancel all active turn timers and clear room state. Call before process exit. */
+export function shutdown() {
+  for (const room of rooms.values()) {
+    if (room.turnTimer) {
+      room.turnTimer.cancel();
+      room.turnTimer = null;
+    }
+  }
+  rooms.clear();
+  socketToRoom.clear();
+}
+
 export function attachSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log(`client connected: ${socket.id}`);
@@ -348,7 +427,11 @@ export function attachSocketHandlers(io) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Bu takma ad kullanılamaz' });
         return;
       }
-      const prevRoomId = leaveCurrentRoom(socket);
+      if (avatarId !== undefined && !VALID_AVATAR_IDS.has(avatarId)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Geçersiz avatar' });
+        return;
+      }
+      const prevRoomId = leaveCurrentRoom(socket, io);
       if (prevRoomId) {
         socket.leave(prevRoomId);
         broadcastPlayerList(io, prevRoomId);
@@ -374,7 +457,7 @@ export function attachSocketHandlers(io) {
         status: 'waiting',
         currentSyllable: null,
         currentAttempt: '',
-        usedWords: [],
+        usedWords: new Set(),
         usedWordsByPlayer: {},
         currentTurnIndex: 0,
         turnTimer: null,
@@ -391,7 +474,7 @@ export function attachSocketHandlers(io) {
       const roomId = payload?.roomId?.trim?.();
       const nickname = typeof payload?.nickname === 'string' ? payload.nickname.trim() : undefined;
       const avatarId = typeof payload?.avatarId === 'string' ? payload.avatarId.trim() || undefined : undefined;
-      if (!roomId) {
+      if (!roomId || roomId.length !== ROOM_CODE_LENGTH) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Oda ID gerekli' });
         return;
       }
@@ -407,12 +490,16 @@ export function attachSocketHandlers(io) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Bu takma ad kullanılamaz' });
         return;
       }
+      if (avatarId !== undefined && !VALID_AVATAR_IDS.has(avatarId)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Geçersiz avatar' });
+        return;
+      }
       const room = rooms.get(roomId);
       if (!room) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Oda bulunamadı' });
         return;
       }
-      const prevRoomId = leaveCurrentRoom(socket);
+      const prevRoomId = leaveCurrentRoom(socket, io);
       if (prevRoomId) {
         socket.leave(prevRoomId);
         broadcastPlayerList(io, prevRoomId);
@@ -431,6 +518,11 @@ export function attachSocketHandlers(io) {
         socket.emit(EVENTS.ROOM_JOINED, roomId);
         broadcastPlayerList(io, roomId);
         if (room.status === 'playing') broadcastGameState(io, roomId);
+        return;
+      }
+
+      if (room.status === 'playing') {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Oyun devam ediyor' });
         return;
       }
 
@@ -467,6 +559,10 @@ export function attachSocketHandlers(io) {
     });
 
     socket.on(EVENTS.SET_READY, (payload, cb) => {
+      if (!checkRateLimit(socket, 'SET_READY', RATE_LIMITS.SET_READY.maxCalls, RATE_LIMITS.SET_READY.windowMs)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Çok hızlı' });
+        return;
+      }
       const roomId = socketToRoom.get(socket.id);
       if (!roomId) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Bir odada değilsiniz' });
@@ -529,7 +625,7 @@ export function attachSocketHandlers(io) {
       });
       room.currentTurnIndex = getFirstActiveTurnIndex(room);
       room.currentAttempt = '';
-      room.usedWords = [];
+      room.usedWords = new Set();
       room.usedWordsByPlayer = {};
       room.currentTurnDurationMs = getTurnDurationMs(room);
       room.currentSyllable = firstSyllable;
@@ -547,6 +643,10 @@ export function attachSocketHandlers(io) {
     });
 
     socket.on(EVENTS.SUBMIT_WORD, (payload, cb) => {
+      if (!checkRateLimit(socket, 'SUBMIT_WORD', RATE_LIMITS.SUBMIT_WORD.maxCalls, RATE_LIMITS.SUBMIT_WORD.windowMs)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Çok hızlı' });
+        return;
+      }
       const roomId = socketToRoom.get(socket.id);
       const reply = (result) => {
         if (typeof cb === 'function') cb(result);
@@ -572,7 +672,7 @@ export function attachSocketHandlers(io) {
         return;
       }
       const syllable = room.currentSyllable ?? '';
-      const result = validateWord(raw, syllable, room.usedWords ?? [], { has: dictionaryHas });
+      const result = validateWord(raw, syllable, room.usedWords, { has: dictionaryHas });
       if (!result.valid) {
         reply({ ok: false, error: result.reason });
         return;
@@ -582,9 +682,7 @@ export function attachSocketHandlers(io) {
         room.turnTimer?.getExpiredAt() != null &&
         Date.now() - room.turnTimer.getExpiredAt() <= GRACE_MS;
       if (inGrace) room.turnTimer?.cancelGrace();
-      const used = room.usedWords ?? [];
-      used.push(word);
-      room.usedWords = used;
+      room.usedWords.add(word);
       if (!room.usedWordsByPlayer) room.usedWordsByPlayer = {};
       if (!room.usedWordsByPlayer[socket.id]) room.usedWordsByPlayer[socket.id] = [];
       room.usedWordsByPlayer[socket.id].push(word);
@@ -616,6 +714,10 @@ export function attachSocketHandlers(io) {
     });
 
     socket.on(EVENTS.WORD_ATTEMPT, (payload, cb) => {
+      if (!checkRateLimit(socket, 'WORD_ATTEMPT', RATE_LIMITS.WORD_ATTEMPT.maxCalls, RATE_LIMITS.WORD_ATTEMPT.windowMs)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Çok hızlı' });
+        return;
+      }
       const roomId = socketToRoom.get(socket.id);
       if (!roomId) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Bir odada değilsiniz' });
@@ -637,7 +739,7 @@ export function attachSocketHandlers(io) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Geçersiz kelime' });
         return;
       }
-      const attempt = raw;
+      const attempt = normalizeTurkishLower(raw);
       room.currentAttempt = attempt;
       io.to(roomId).emit(EVENTS.WORD_ATTEMPT, {
         playerId: socket.id,
@@ -658,15 +760,51 @@ export function attachSocketHandlers(io) {
         const room = rooms.get(roomId);
         if (room) {
           broadcastPlayerList(io, roomId);
-          if (room.status === 'playing') broadcastGameState(io, roomId);
+          if (room.status === 'playing') {
+            const currentPlayer = room.players[room.currentTurnIndex];
+            if (currentPlayer?.socketId === socket.id) {
+              if (room.turnTimer) {
+                room.turnTimer.cancel();
+                room.turnTimer = null;
+              }
+              const activePlayers = room.players.filter((p) => !p.isEliminated && !p.disconnected);
+              if (activePlayers.length <= 1) {
+                const winner = activePlayers[0] ?? null;
+                const finalScores = room.players.map((p) => ({
+                  socketId: p.socketId,
+                  nickname: p.nickname,
+                  avatarId: p.avatarId,
+                  score: p.score ?? 0,
+                  isEliminated: p.isEliminated,
+                }));
+                io.to(roomId).emit(EVENTS.GAME_END, { winner: winner?.socketId ?? null, players: finalScores });
+                room.status = 'waiting';
+                room.turnExpiresAt = null;
+              } else {
+                const nextIdx = getNextTurnIndex(room);
+                room.currentTurnIndex = nextIdx >= 0 ? nextIdx : room.currentTurnIndex;
+                startNextTurn(io, roomId);
+              }
+            } else {
+              broadcastGameState(io, roomId);
+            }
+          }
         }
       }
     });
 
     socket.on(EVENTS.CHAT_MESSAGE, (payload, cb) => {
+      if (!checkRateLimit(socket, 'CHAT_MESSAGE', RATE_LIMITS.CHAT_MESSAGE.maxCalls, RATE_LIMITS.CHAT_MESSAGE.windowMs)) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Çok hızlı' });
+        return;
+      }
       const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
       if (!text) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Boş mesaj' });
+        return;
+      }
+      if (text.length > MAX_CHAT_LENGTH) {
+        if (typeof cb === 'function') cb({ ok: false, error: 'Mesaj çok uzun' });
         return;
       }
       if (isProfane(text)) {

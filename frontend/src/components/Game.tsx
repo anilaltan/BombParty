@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useSettings } from '../context/SettingsContext';
 import { useI18n } from '../context/I18nContext';
@@ -8,6 +8,43 @@ import type { Player, ChatMessage } from '../types/game';
 
 const DEFAULT_TURN_DURATION_MS = 15000;
 const ALPHABET = ['A','B','C','Ç','D','E','F','G','Ğ','H','I','İ','J','K','L','M','N','O','Ö','P','R','S','Ş','T','U','Ü','V','Y','Z'];
+const EMPTY_WORDS: string[] = [];
+
+interface PlayerCardProps {
+  p: Player;
+  pos: { x: number; y: number; angle: number };
+  active: boolean;
+  liveWord: string;
+  myWords: string[];
+}
+
+const PlayerCard = memo(function PlayerCard({ p, pos, active, liveWord, myWords }: PlayerCardProps) {
+  return (
+    <div
+      className={`bp-player${p.isEliminated ? ' eliminated' : ''}`}
+      style={{ left: pos.x - 54, top: pos.y - 50, width: 108 }}
+    >
+      <span className="bp-player-name">{p.nickname?.trim() ?? p.socketId.slice(0, 10)}</span>
+      <div className={`bp-avatar-card${active ? ' active' : ''}`}>
+        {getAvatarEmoji(p.avatarId)}
+        {active && <div className="bp-active-ring" />}
+      </div>
+      <div className="bp-hearts">
+        {Array.from({ length: Math.max(p.lives, 3) }).map((_, li) => (
+          <span key={li} className={`bp-heart${li >= p.lives ? ' lost' : ''}`}>♥</span>
+        ))}
+      </div>
+      {liveWord && <span className="bp-live-word">{liveWord}</span>}
+      {myWords.length > 0 && (
+        <div className="bp-player-words">
+          {myWords.slice(-4).map(w => (
+            <span key={w} className="bp-player-word-chip">{w}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
 
 
 export function Game() {
@@ -23,7 +60,7 @@ export function Game() {
   const [submitting, setSubmitting] = useState(false);
   const [invalidFlash, setInvalidFlash] = useState(false);
   const [validFlash, setValidFlash] = useState(false);
-  const [timerMs, setTimerMs] = useState<number | null>(null);
+  const [urgent, setUrgent] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
 
@@ -83,11 +120,12 @@ export function Game() {
     socket?.emit(EVENTS.WORD_ATTEMPT, { word });
   }, [gameState?.status, isMyTurn, socket, word]);
 
-  // Countdown timer
+  // Countdown timer — only updates `urgent` state, not a numeric value, so ticking
+  // does not cause full re-renders. React bails out when the boolean value is unchanged.
   useEffect(() => {
     if (gameState?.status !== 'playing' || !gameState.currentPlayerId) {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      setTimerMs(null);
+      setUrgent(false);
       endAtRef.current = null;
       return;
     }
@@ -101,12 +139,12 @@ export function Game() {
     const tick = () => {
       const now = Date.now();
       const left = Math.max(0, endAtRef.current! - now);
-      setTimerMs(left);
+      const secs = Math.ceil(left / 1000);
+      setUrgent(left > 0 && secs <= 5);
       if (left <= 0) {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         return;
       }
-      const secs = Math.ceil(left / 1000);
       const interval = secs > 10 ? 1000 : secs > 5 ? 500 : 250;
       if (myTurnTick && soundEnabled && now - lastTickRef.current >= interval) {
         lastTickRef.current = now;
@@ -196,6 +234,23 @@ export function Game() {
     });
   }, [players.length, arenaSize]);
 
+  // Arrow computations: only recalculate when active player or positions change
+  const arrowComputations = useMemo(() => {
+    const cx = arenaSize.w / 2;
+    const cy = arenaSize.h / 2;
+    const idx = gameState?.currentPlayerId
+      ? players.findIndex(p => p.socketId === gameState.currentPlayerId)
+      : -1;
+    const target = idx >= 0 ? playerPositions[idx] : null;
+    const length = target ? Math.sqrt((target.x - cx) ** 2 + (target.y - cy) ** 2) - 58 : 0;
+    return { currentIdx: idx, arrowTarget: target, arrowLength: length, arrowAngle: target?.angle ?? 0 };
+  }, [gameState?.currentPlayerId, players, playerPositions, arenaSize]);
+
+  const flashClass = useMemo(() => [
+    invalidFlash && 'shake-on-invalid flash-red-on-invalid',
+    validFlash   && 'flash-green-on-valid',
+  ].filter(Boolean).join(' '), [invalidFlash, validFlash]);
+
   if (!connected) {
     return (
       <div className="bp-lobby">
@@ -257,23 +312,11 @@ export function Game() {
 
   if (gameState?.status !== 'playing' || !roomId) return null;
 
+  const { currentIdx, arrowTarget, arrowLength, arrowAngle } = arrowComputations;
   const cx = arenaSize.w / 2;
   const cy = arenaSize.h / 2;
   const n  = players.length;
-  const currentIdx = gameState.currentPlayerId
-    ? players.findIndex(p => p.socketId === gameState.currentPlayerId)
-    : -1;
-  const arrowTarget  = currentIdx >= 0 ? playerPositions[currentIdx] : null;
-  const arrowLength  = arrowTarget ? Math.sqrt((arrowTarget.x - cx) ** 2 + (arrowTarget.y - cy) ** 2) - 58 : 0;
-  const arrowAngle   = arrowTarget?.angle ?? 0;
-  const timerSecs    = timerMs !== null ? Math.ceil(timerMs / 1000) : null;
-  const urgent       = timerSecs !== null && timerSecs <= 5;
   const wordsPlayed  = gameState.usedWords?.length ?? 0;
-
-  const flashClass = [
-    invalidFlash && 'shake-on-invalid flash-red-on-invalid',
-    validFlash   && 'flash-green-on-valid',
-  ].filter(Boolean).join(' ');
 
   return (
     <div className={`bp-layout ${flashClass}`}>
@@ -303,32 +346,16 @@ export function Game() {
             if (!pos) return null;
             const active = p.socketId === gameState.currentPlayerId;
             const liveWord = active ? (liveAttempt?.word ?? '').toUpperCase() : '';
-            const myWords = gameState.usedWordsByPlayer?.[p.socketId] ?? [];
+            const myWords = gameState.usedWordsByPlayer?.[p.socketId] ?? EMPTY_WORDS;
             return (
-              <div
+              <PlayerCard
                 key={p.socketId}
-                className={`bp-player${p.isEliminated ? ' eliminated' : ''}`}
-                style={{ left: pos.x - 54, top: pos.y - 50, width: 108 }}
-              >
-                <span className="bp-player-name">{p.nickname?.trim() ?? p.socketId.slice(0, 10)}</span>
-                <div className={`bp-avatar-card${active ? ' active' : ''}`}>
-                  {getAvatarEmoji(p.avatarId)}
-                  {active && <div className="bp-active-ring" />}
-                </div>
-                <div className="bp-hearts">
-                  {Array.from({ length: Math.max(p.lives, 3) }).map((_, li) => (
-                    <span key={li} className={`bp-heart${li >= p.lives ? ' lost' : ''}`}>♥</span>
-                  ))}
-                </div>
-                {liveWord && <span className="bp-live-word">{liveWord}</span>}
-                {myWords.length > 0 && (
-                  <div className="bp-player-words">
-                    {myWords.slice(-4).map(w => (
-                      <span key={w} className="bp-player-word-chip">{w}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                p={p}
+                pos={pos}
+                active={active}
+                liveWord={liveWord}
+                myWords={myWords}
+              />
             );
           })}
 

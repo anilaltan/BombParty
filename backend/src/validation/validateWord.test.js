@@ -7,54 +7,54 @@ const has = (word) => dictSet.has(word);
 
 describe('validateWord', () => {
   it('returns valid for word containing syllable and in dictionary', () => {
-    const r = validateWord('kalem', 'ka', [], { has });
+    const r = validateWord('kalem', 'ka', new Set(), { has });
     assert.strictEqual(r.valid, true);
     assert.strictEqual(r.reason, undefined);
   });
 
   it('returns invalid when word does not contain syllable', () => {
-    const r = validateWord('kalem', 'ba', [], { has });
+    const r = validateWord('kalem', 'ba', new Set(), { has });
     assert.strictEqual(r.valid, false);
     assert.strictEqual(r.reason, 'Word must contain the syllable');
   });
 
   it('returns invalid when word not in dictionary', () => {
-    const r = validateWord('xyznonexistent', 'xy', [], { has });
+    const r = validateWord('xyznonexistent', 'xy', new Set(), { has });
     assert.strictEqual(r.valid, false);
     assert.strictEqual(r.reason, 'Word not in dictionary');
   });
 
   it('returns invalid when word already used this round', () => {
-    const r = validateWord('kalem', 'ka', ['kalem'], { has });
+    const r = validateWord('kalem', 'ka', new Set(['kalem']), { has });
     assert.strictEqual(r.valid, false);
     assert.strictEqual(r.reason, 'Word already used this round');
   });
 
   it('returns invalid for empty word', () => {
-    const r = validateWord('', 'ka', [], { has });
+    const r = validateWord('', 'ka', new Set(), { has });
     assert.strictEqual(r.valid, false);
     assert.strictEqual(r.reason, 'Word required');
   });
 
   it('normalizes Turkish and checks syllable', () => {
-    const r = validateWord('  KALEM  ', 'ka', [], { has });
+    const r = validateWord('  KALEM  ', 'ka', new Set(), { has });
     assert.strictEqual(r.valid, true);
   });
 
   it('accepts word containing syllable (e.g. feda for EDA)', () => {
-    const r = validateWord('feda', 'EDA', [], { has });
+    const r = validateWord('feda', 'EDA', new Set(), { has });
     assert.strictEqual(r.valid, true);
     assert.strictEqual(r.reason, undefined);
   });
 
   it('returns Validation unavailable when has is not provided', () => {
-    const r = validateWord('kalem', 'ka', [], {});
+    const r = validateWord('kalem', 'ka', new Set(), {});
     assert.strictEqual(r.valid, false);
     assert.strictEqual(r.reason, 'Validation unavailable');
   });
 
   it('returns Validation unavailable when has throws', () => {
-    const r = validateWord('kalem', 'ka', [], {
+    const r = validateWord('kalem', 'ka', new Set(), {
       has: () => {
         throw new Error('Dict error');
       },

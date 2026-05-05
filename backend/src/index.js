@@ -9,24 +9,28 @@ import { loadDictionary, size, getWordList } from './dictionary/index.js';
 
 const API_PAGE_SIZE = 2000;
 import { initSyllablePool, getSyllablePoolSize } from './dictionary/syllables.js';
-import { attachSocketHandlers } from './socketManager.js';
+import { attachSocketHandlers, shutdown } from './socketManager.js';
 
 const PORT = Number(process.env.PORT) || 3001;
 
 const app = express();
 
-const allowedOrigins = process.env.CORS_ORIGIN?.split(',').filter(Boolean);
-// CORS for HTTP (and Socket.IO long-polling handshake).
-// WARNING: when CORS_ORIGIN is not set (local dev), any origin is reflected back.
-// Always set CORS_ORIGIN in production to avoid an open CORS policy.
+const configuredOrigins = process.env.CORS_ORIGIN?.split(',').filter(Boolean);
+if (!configuredOrigins?.length) {
+  console.warn('CORS_ORIGIN not set — allowing localhost only. Set CORS_ORIGIN before public deployment.');
+}
+// Reflective origin + credentials=true is a security vulnerability: any site could
+// make credentialed requests on a visitor's behalf. Use an explicit allowlist always.
+const allowedOrigins = configuredOrigins?.length
+  ? configuredOrigins
+  : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (allowedOrigins?.length) {
-    if (origin && allowedOrigins.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -57,7 +61,7 @@ app.get('/api/dictionary', dictLimiter, (req, res) => {
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins?.length ? allowedOrigins : true, // true = reflect request origin (required with credentials)
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST'],
   },
@@ -89,3 +93,16 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+function gracefulShutdown(signal) {
+  console.log(`${signal} received, shutting down…`);
+  shutdown();
+  io.close();
+  httpServer.close(() => {
+    console.log('Server closed.');
+    process.exit(0);
+  });
+}
+
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT',  () => gracefulShutdown('SIGINT'));

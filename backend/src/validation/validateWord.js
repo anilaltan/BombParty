@@ -23,11 +23,11 @@ import { normalizeTurkishLower } from '../dictionary/filter.js';
  *
  * @param {string} word - Raw input word
  * @param {string} syllable - Current round syllable
- * @param {string[]} usedWords - Words already used this round
+ * @param {Set<string>} usedWords - Words already used this round
  * @param {ValidateWordOptions} options - Must include has() for dictionary lookup
  * @returns {ValidationResult}
  */
-export function validateWord(word, syllable, usedWords = [], options = {}) {
+export function validateWord(word, syllable, usedWords = new Set(), options = {}) {
   const normalizedWord = normalizeTurkishLower(word);
   const normalizedSyllable = (typeof syllable === 'string' ? syllable : '').trim().toLocaleLowerCase('tr-TR').normalize('NFC');
 
@@ -52,8 +52,7 @@ export function validateWord(word, syllable, usedWords = [], options = {}) {
     return { valid: false, reason: 'Doğrulama kullanılamıyor' };
   }
 
-  const used = Array.isArray(usedWords) ? usedWords : [];
-  if (used.includes(normalizedWord)) {
+  if (usedWords.has(normalizedWord)) {
     return { valid: false, reason: 'Bu turda kelime zaten kullanıldı' };
   }
 
