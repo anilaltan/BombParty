@@ -8,14 +8,15 @@ import type { Player } from '../types/game';
 type LobbyProps = {
   onOpenDictionary?: () => void;
   onOpenSettings?: () => void;
+  initialRoomCode?: string;
 };
 
-export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
+export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: LobbyProps) {
   const { socket, connected, roomId, players, gameState, lastError, clearLastError, leaveRoom } = useSocket();
   const { t, lang, setLang } = useI18n();
   const [nickname, setNickname]     = useState('');
   const [avatarId, setAvatarId]     = useState('1');
-  const [roomCode, setRoomCode]     = useState('');
+  const [roomCode, setRoomCode]     = useState(initialRoomCode ?? '');
   const [timeMode, setTimeMode]     = useState<'fixed' | 'range'>('fixed');
   const [fixedSec, setFixedSec]     = useState('15');
   const [minSec, setMinSec]         = useState('10');
@@ -27,6 +28,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [creating, setCreating]     = useState(false);
   const [copied, setCopied]         = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const me      = players.find(p => p.socketId === socket?.id);
   const isReady = me?.ready ?? false;
@@ -125,6 +127,15 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
     navigator.clipboard.writeText(roomId).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleShareLink = () => {
+    if (!roomId) return;
+    const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
     });
   };
 
@@ -391,6 +402,14 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             style={{ fontSize: 12, padding: '4px 12px', whiteSpace: 'nowrap' }}
           >
             {copied ? t.copied : t.copyCode}
+          </button>
+          <button
+            type="button"
+            className="bp-btn-secondary"
+            onClick={handleShareLink}
+            style={{ fontSize: 12, padding: '4px 12px', whiteSpace: 'nowrap' }}
+          >
+            {linkCopied ? t.copied : t.shareLink}
           </button>
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-2)' }}>

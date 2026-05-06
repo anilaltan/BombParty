@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSocket } from './context/SocketContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { I18nProvider } from './context/I18nContext';
@@ -12,7 +12,22 @@ type View = 'landing' | 'main' | 'dictionary' | 'settings';
 
 function AppContent() {
   const { gameState, gameEnd } = useSocket();
-  const [view, setView] = useState<View>('landing');
+
+  const [initialRoomCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('room')?.toUpperCase() ?? '';
+  });
+
+  const [view, setView] = useState<View>(initialRoomCode ? 'main' : 'landing');
+
+  useEffect(() => {
+    if (initialRoomCode) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('room');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [initialRoomCode]);
+
   const inGame = gameState?.status === 'playing';
   const showGame = inGame || !!gameEnd;
 
@@ -36,6 +51,7 @@ function AppContent() {
     <Lobby
       onOpenDictionary={() => setView('dictionary')}
       onOpenSettings={() => setView('settings')}
+      initialRoomCode={initialRoomCode}
     />
   );
 }

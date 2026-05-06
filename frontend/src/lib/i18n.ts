@@ -110,6 +110,7 @@ export type Translations = {
   returnToMenu: string;
   copyCode: string;
   copied: string;
+  shareLink: string;
 };
 
 export const translations: Record<Lang, Translations> = {
@@ -223,6 +224,7 @@ export const translations: Record<Lang, Translations> = {
     returnToMenu: 'Main Menu',
     copyCode: 'Copy Code',
     copied: 'Copied!',
+    shareLink: 'Share Link',
   },
   tr: {
     connecting: 'Bağlanıyor…',
@@ -334,5 +336,6 @@ export const translations: Record<Lang, Translations> = {
     returnToMenu: 'Ana Menü',
     copyCode: 'Kodu Kopyala',
     copied: 'Kopyalandı!',
+    shareLink: 'Linki Paylaş',
   },
 };
