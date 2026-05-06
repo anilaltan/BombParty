@@ -98,6 +98,18 @@ export type Translations = {
   landingStartBtn: string;
   landingDictBtn: string;
   landingFooterTag: string;
+  maxPlayers: string;
+  roomVisibility: string;
+  publicRoom: string;
+  privateRoom: string;
+  browsePublicRooms: string;
+  noPublicRooms: string;
+  loadingRooms: string;
+  playersSlashMax: (current: number, max: number) => string;
+  quitGame: string;
+  returnToMenu: string;
+  copyCode: string;
+  copied: string;
 };
 
 export const translations: Record<Lang, Translations> = {
@@ -199,6 +211,18 @@ export const translations: Record<Lang, Translations> = {
     landingStartBtn: 'Start Playing',
     landingDictBtn: 'Browse Dictionary',
     landingFooterTag: 'Find your word before the bomb goes off.',
+    maxPlayers: 'Max Players',
+    roomVisibility: 'Visibility',
+    publicRoom: 'Public',
+    privateRoom: 'Private',
+    browsePublicRooms: 'Browse Public Rooms',
+    noPublicRooms: 'No public rooms available',
+    loadingRooms: 'Loading rooms…',
+    playersSlashMax: (c, m) => `${c}/${m} players`,
+    quitGame: 'Quit Game',
+    returnToMenu: 'Main Menu',
+    copyCode: 'Copy Code',
+    copied: 'Copied!',
   },
   tr: {
     connecting: 'Bağlanıyor…',
@@ -298,5 +322,17 @@ export const translations: Record<Lang, Translations> = {
     landingStartBtn: 'Oyuna Başla',
     landingDictBtn: 'Sözlüğü Gözat',
     landingFooterTag: 'Bomba patlamadan önce kelimeni bul.',
+    maxPlayers: 'Maks Oyuncu',
+    roomVisibility: 'Görünürlük',
+    publicRoom: 'Herkese Açık',
+    privateRoom: 'Gizli',
+    browsePublicRooms: 'Açık Odalar',
+    noPublicRooms: 'Açık oda bulunamadı',
+    loadingRooms: 'Odalar yükleniyor…',
+    playersSlashMax: (c, m) => `${c}/${m} oyuncu`,
+    quitGame: 'Oyundan Çık',
+    returnToMenu: 'Ana Menü',
+    copyCode: 'Kodu Kopyala',
+    copied: 'Kopyalandı!',
   },
 };

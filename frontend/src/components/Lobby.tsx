@@ -11,7 +11,7 @@ type LobbyProps = {
 };
 
 export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
-  const { socket, connected, roomId, players, gameState, lastError, clearLastError } = useSocket();
+  const { socket, connected, roomId, players, gameState, lastError, clearLastError, leaveRoom } = useSocket();
   const { t, lang, setLang } = useI18n();
   const [nickname, setNickname]     = useState('');
   const [avatarId, setAvatarId]     = useState('1');
@@ -20,8 +20,13 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
   const [fixedSec, setFixedSec]     = useState('15');
   const [minSec, setMinSec]         = useState('10');
   const [maxSec, setMaxSec]         = useState('20');
+  const [maxPlayers, setMaxPlayers] = useState(8);
+  const [isPrivate, setIsPrivate]   = useState(false);
+  const [publicRooms, setPublicRooms] = useState<Array<{ roomId: string; playerCount: number; maxPlayers: number }> | null>(null);
+  const [loadingRooms, setLoadingRooms] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [creating, setCreating]     = useState(false);
+  const [copied, setCopied]         = useState(false);
 
   const me      = players.find(p => p.socketId === socket?.id);
   const isReady = me?.ready ?? false;
@@ -58,6 +63,8 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
       {
         nickname: name,
         avatarId,
+        maxPlayers,
+        isPrivate,
         turnTime: timeMode === 'fixed'
           ? { mode: 'fixed', fixedSeconds: pFixed }
           : { mode: 'range', minSeconds: pMin, maxSeconds: pMax },
@@ -96,6 +103,39 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
     socket?.emit(EVENTS.START_GAME, {},
       (res: { ok?: boolean; error?: string }) => {
         if (res && !res.ok) setActionError(res.error ?? t.failedCreate);
+      });
+  };
+
+  const handleBrowseRooms = async () => {
+    if (publicRooms !== null) { setPublicRooms(null); return; }
+    setLoadingRooms(true);
+    try {
+      const res = await fetch('/api/rooms');
+      const data = await res.json();
+      setPublicRooms(data.rooms ?? []);
+    } catch {
+      setPublicRooms([]);
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!roomId) return;
+    navigator.clipboard.writeText(roomId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleJoinPublic = (id: string) => {
+    const name = nickname.trim();
+    if (!name) { setActionError(t.enterNickname); return; }
+    setActionError(null);
+    clearLastError();
+    socket?.emit(EVENTS.JOIN_ROOM, { roomId: id, nickname: name, avatarId },
+      (res: { ok?: boolean; error?: string }) => {
+        if (res && !res.ok) setActionError(res.error ?? t.failedJoin);
       });
   };
 
@@ -204,6 +244,42 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             )}
           </div>
 
+          {/* Max players */}
+          <div className="bp-field">
+            <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>{t.maxPlayers}</span>
+              <span style={{ fontWeight: 700, color: 'var(--yellow)' }}>{maxPlayers}</span>
+            </label>
+            <input
+              type="range"
+              min={2}
+              max={12}
+              value={maxPlayers}
+              onChange={e => setMaxPlayers(Number(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--yellow)' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+              <span>2</span><span>12</span>
+            </div>
+          </div>
+
+          {/* Visibility */}
+          <div className="bp-field">
+            <label>{t.roomVisibility}</label>
+            <div className="bp-tabs">
+              <button
+                type="button"
+                className={`bp-tab ${!isPrivate ? 'on' : 'off'}`}
+                onClick={() => setIsPrivate(false)}
+              >{t.publicRoom}</button>
+              <button
+                type="button"
+                className={`bp-tab ${isPrivate ? 'on' : 'off'}`}
+                onClick={() => setIsPrivate(true)}
+              >{t.privateRoom}</button>
+            </div>
+          </div>
+
           {/* Create */}
           <button
             type="button"
@@ -237,6 +313,38 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
             </button>
           </div>
         </div>
+
+        {/* Public rooms browser */}
+        <button
+          type="button"
+          className="bp-btn-secondary"
+          onClick={handleBrowseRooms}
+          disabled={loadingRooms}
+          style={{ width: '100%', marginTop: 4 }}
+        >
+          {loadingRooms ? t.loadingRooms : t.browsePublicRooms}
+        </button>
+
+        {publicRooms !== null && (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {publicRooms.length === 0 ? (
+              <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-3)', margin: 0 }}>{t.noPublicRooms}</p>
+            ) : publicRooms.map(room => (
+              <div key={room.roomId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface-2)', borderRadius: 8, padding: '8px 12px' }}>
+                <div>
+                  <span style={{ fontWeight: 700, fontFamily: 'monospace', letterSpacing: 2, fontSize: 15 }}>{room.roomId}</span>
+                  <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-2)' }}>{t.playersSlashMax(room.playerCount, room.maxPlayers)}</span>
+                </div>
+                <button
+                  type="button"
+                  className="bp-btn-secondary"
+                  onClick={() => handleJoinPublic(room.roomId)}
+                  style={{ padding: '4px 14px', fontSize: 13 }}
+                >{t.join}</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Utility links */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -274,7 +382,17 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
         <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>
           {t.roomCodeLabel}
         </p>
-        <div className="bp-code-display">{roomId}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          <div className="bp-code-display">{roomId}</div>
+          <button
+            type="button"
+            className="bp-btn-secondary"
+            onClick={handleCopyCode}
+            style={{ fontSize: 12, padding: '4px 12px', whiteSpace: 'nowrap' }}
+          >
+            {copied ? t.copied : t.copyCode}
+          </button>
+        </div>
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-2)' }}>
           {t.shareCode}
         </p>
@@ -304,7 +422,11 @@ export function Lobby({ onOpenDictionary, onOpenSettings }: LobbyProps) {
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button type="button" className="bp-btn-secondary" onClick={leaveRoom} style={{ fontSize: 12 }}>
+          {t.returnToMenu}
+        </button>
+
         <button
           type="button"
           className="bp-btn-secondary"

@@ -23,6 +23,7 @@ interface SocketContextValue {
   clearLastWordResult: () => void;
   clearLastError: () => void;
   clearGameEnd: () => void;
+  leaveRoom: () => void;
 }
 
 const SocketContext = createContext<SocketContextValue | null>(null);
@@ -114,6 +115,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const clearLastWordResult = useCallback(() => setLastWordResult(null), []);
   const clearLastError = useCallback(() => setLastError(null), []);
   const clearGameEnd = useCallback(() => setGameEnd(null), []);
+  const leaveRoom = useCallback(() => {
+    setGameEnd(null);
+    socket?.disconnect();
+    socket?.connect();
+  }, [socket]);
 
   const value: SocketContextValue = {
     socket,
@@ -128,6 +134,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     clearLastWordResult,
     clearLastError,
     clearGameEnd,
+    leaveRoom,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

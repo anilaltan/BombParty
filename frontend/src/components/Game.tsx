@@ -51,7 +51,7 @@ export function Game() {
   const {
     socket, connected, roomId, players, gameState,
     liveAttempt, lastWordResult, gameEnd,
-    clearLastWordResult, clearGameEnd,
+    clearLastWordResult, clearGameEnd, leaveRoom,
   } = useSocket();
   const { soundEnabled } = useSettings();
   const { t } = useI18n();
@@ -334,6 +334,9 @@ export function Game() {
         <div style={{ flex: 1 }} />
         <span className="bp-words-count">{t.words(wordsPlayed)}</span>
         <div className="bp-header-sep" />
+        <button type="button" className="bp-btn-secondary" onClick={leaveRoom} style={{ fontSize: 12, padding: '4px 12px' }}>
+          {t.quitGame}
+        </button>
       </header>
 
       {/* ── Game area ── */}

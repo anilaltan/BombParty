@@ -9,7 +9,7 @@ import { loadDictionary, size, getWordList } from './dictionary/index.js';
 
 const API_PAGE_SIZE = 2000;
 import { initSyllablePool, getSyllablePoolSize } from './dictionary/syllables.js';
-import { attachSocketHandlers, shutdown } from './socketManager.js';
+import { attachSocketHandlers, shutdown, getPublicRooms } from './socketManager.js';
 
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -43,6 +43,11 @@ const dictLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Çok fazla istek, lütfen yavaşlayın.' },
+});
+
+app.get('/api/rooms', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ rooms: getPublicRooms() });
 });
 
 app.get('/api/dictionary', dictLimiter, (req, res) => {

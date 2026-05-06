@@ -19,6 +19,7 @@ const DEFAULT_TURN_DURATION_MS = Number(process.env.TURN_DURATION_MS) > 0 ? Numb
 const MIN_TURN_DURATION_MS = 3000;
 const MAX_TURN_DURATION_MS = 60000;
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 12;
 const MAX_NICKNAME_LENGTH = 20;
 const MAX_WORD_LENGTH = 64;
@@ -391,6 +392,24 @@ function markPlayerDisconnected(socket) {
 /** Game events: startGame (host), submitWord { word }, bombExploded; server emits gameState, wordResult, gameEnd */
 export { EVENTS };
 
+/**
+ * Returns a snapshot of all public waiting rooms for the room browser.
+ * @returns {{ roomId: string; playerCount: number; maxPlayers: number }[]}
+ */
+export function getPublicRooms() {
+  const result = [];
+  for (const [roomId, room] of rooms.entries()) {
+    if (!room.isPrivate && room.status === 'waiting') {
+      result.push({
+        roomId,
+        playerCount: room.players.filter((p) => !p.disconnected).length,
+        maxPlayers: room.maxPlayers ?? MAX_PLAYERS,
+      });
+    }
+  }
+  return result;
+}
+
 /** Cancel all active turn timers and clear room state. Call before process exit. */
 export function shutdown() {
   for (const room of rooms.values()) {
@@ -411,6 +430,9 @@ export function attachSocketHandlers(io) {
       const nickname = typeof payload?.nickname === 'string' ? payload.nickname.trim() : undefined;
       const avatarId = typeof payload?.avatarId === 'string' ? payload.avatarId.trim() || undefined : undefined;
       const turnTimerConfig = resolveTurnTimerConfig(payload?.turnTime);
+      const rawMax = Number(payload?.maxPlayers);
+      const maxPlayers = Number.isInteger(rawMax) && rawMax >= MIN_PLAYERS && rawMax <= MAX_PLAYERS ? rawMax : MAX_PLAYERS;
+      const isPrivate = payload?.isPrivate === true;
       if (!nickname) {
         if (typeof cb === 'function') cb({ ok: false, error: 'Takma ad gerekli' });
         return;
@@ -462,6 +484,8 @@ export function attachSocketHandlers(io) {
         currentTurnIndex: 0,
         turnTimer: null,
         turnExpiresAt: null,
+        maxPlayers,
+        isPrivate,
       });
       socketToRoom.set(socket.id, newId);
 
@@ -535,8 +559,9 @@ export function attachSocketHandlers(io) {
       }
 
       const activePlayers = room.players.filter((p) => !p.disconnected);
-      if (activePlayers.length >= MAX_PLAYERS) {
-        if (typeof cb === 'function') cb({ ok: false, error: `Oda dolu (maks ${MAX_PLAYERS} oyuncu)` });
+      const roomMax = room.maxPlayers ?? MAX_PLAYERS;
+      if (activePlayers.length >= roomMax) {
+        if (typeof cb === 'function') cb({ ok: false, error: `Oda dolu (maks ${roomMax} oyuncu)` });
         return;
       }
 
