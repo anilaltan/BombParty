@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
@@ -30,6 +30,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
   const [copied, setCopied]         = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  const isPremium = localStorage.getItem('bombparty-premium') === 'true';
   const me      = players.find(p => p.socketId === socket?.id);
   const isReady = me?.ready ?? false;
   const isHost  = me?.isHost ?? false;
@@ -37,6 +38,13 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
     isHost && players.length >= 2 &&
     players.every(p => p.ready) &&
     gameState?.status === 'waiting';
+
+  useEffect(() => {
+    if (roomId || isPremium) return;
+    try {
+      ((window as { adsbygoogle?: unknown[] }).adsbygoogle ??= []).push({});
+    } catch { /* ignore */ }
+  }, [!!roomId, isPremium]);
 
   const err = actionError ?? lastError;
 
@@ -378,6 +386,17 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
             🌐 {lang === 'tr' ? 'EN' : 'TR'}
           </button>
         </div>
+
+        {!isPremium && (
+          <ins
+            className="adsbygoogle"
+            style={{ display: 'block', width: '100%' }}
+            data-ad-client="ca-pub-XXXXXXXXXX"
+            data-ad-slot="1111111111"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        )}
 
         {err && <p className="bp-error">{err}</p>}
       </div>

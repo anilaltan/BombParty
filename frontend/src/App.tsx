@@ -21,6 +21,16 @@ function AppContent() {
   const [view, setView] = useState<View>(initialRoomCode ? 'main' : 'landing');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('unlocked') === 'premium') {
+      localStorage.setItem('bombparty-premium', 'true');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('unlocked');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  useEffect(() => {
     if (initialRoomCode) {
       const url = new URL(window.location.href);
       url.searchParams.delete('room');

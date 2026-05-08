@@ -112,7 +112,15 @@ export function Game() {
   const playDing = useCallback(() => playTone(880, 0.15, 0.15), [playTone]);
   const playTick = useCallback(() => playTone(1200, 0.05, 0.08), [playTone]);
 
+  const isPremium = localStorage.getItem('bombparty-premium') === 'true';
   const isMyTurn = gameState?.status === 'playing' && gameState.currentPlayerId === socket?.id;
+
+  useEffect(() => {
+    if (!gameEnd || isPremium) return;
+    try {
+      ((window as { adsbygoogle?: unknown[] }).adsbygoogle ??= []).push({});
+    } catch { /* ignore */ }
+  }, [!!gameEnd]);
 
   // Broadcast live attempt
   useEffect(() => {
@@ -302,6 +310,16 @@ export function Game() {
             </div>
           ))}
         </div>
+
+        {!isPremium && (
+          <ins
+            className="adsbygoogle"
+            style={{ display: 'block', width: 300, height: 250 }}
+            data-ad-client="ca-pub-XXXXXXXXXX"
+            data-ad-slot="2222222222"
+            data-ad-format="rectangle"
+          />
+        )}
 
         <button type="button" className="bp-btn-secondary" style={{ minWidth: 180 }} onClick={clearGameEnd}>
           {t.backToLobby}

@@ -67,6 +67,7 @@ function PageControls({
 
 export function Dictionary({ onBack }: Props) {
   const { t } = useI18n();
+  const isPremium = localStorage.getItem('bombparty-premium') === 'true';
   const [allWords, setAllWords]         = useState<string[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
@@ -75,6 +76,13 @@ export function Dictionary({ onBack }: Props) {
   const [page, setPage]                 = useState(1);
   const searchRef = useRef<HTMLInputElement>(null);
   const bodyRef   = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isPremium) return;
+    try {
+      ((window as { adsbygoogle?: unknown[] }).adsbygoogle ??= []).push({});
+    } catch { /* ignore */ }
+  }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -227,6 +235,18 @@ export function Dictionary({ onBack }: Props) {
       </div>
 
       {error && <p className="bp-error" style={{ margin: '0 24px' }}>{error}</p>}
+
+      {!isPremium && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+          <ins
+            className="adsbygoogle"
+            style={{ display: 'block', width: 300, height: 250 }}
+            data-ad-client="ca-pub-XXXXXXXXXX"
+            data-ad-slot="3333333333"
+            data-ad-format="rectangle"
+          />
+        </div>
+      )}
 
       {/* ── Word grid ── */}
       <div className="bp-dict-body bp-scroll" ref={bodyRef}>
