@@ -115,13 +115,6 @@ export function Game() {
   const isPremium = localStorage.getItem('bombparty-premium') === 'true';
   const isMyTurn = gameState?.status === 'playing' && gameState.currentPlayerId === socket?.id;
 
-  useEffect(() => {
-    if (!gameEnd || isPremium) return;
-    try {
-      ((window as { adsbygoogle?: unknown[] }).adsbygoogle ??= []).push({});
-    } catch { /* ignore */ }
-  }, [!!gameEnd]);
-
   // Broadcast live attempt
   useEffect(() => {
     if (gameState?.status !== 'playing' || !isMyTurn) return;
@@ -312,13 +305,18 @@ export function Game() {
         </div>
 
         {!isPremium && (
-          <ins
-            className="adsbygoogle"
-            style={{ display: 'block', width: 300, height: 250 }}
-            data-ad-client="ca-pub-XXXXXXXXXX"
-            data-ad-slot="2222222222"
-            data-ad-format="rectangle"
-          />
+          <div style={{
+            width: 300, height: 250,
+            border: '2px dashed var(--border)',
+            borderRadius: 'var(--r-lg)',
+            background: 'var(--surface-2)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 6,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>Reklam</span>
+            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>300 × 250</span>
+          </div>
         )}
 
         <button type="button" className="bp-btn-secondary" style={{ minWidth: 180 }} onClick={clearGameEnd}>

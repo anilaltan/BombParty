@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
@@ -38,13 +38,6 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
     isHost && players.length >= 2 &&
     players.every(p => p.ready) &&
     gameState?.status === 'waiting';
-
-  useEffect(() => {
-    if (roomId || isPremium) return;
-    try {
-      ((window as { adsbygoogle?: unknown[] }).adsbygoogle ??= []).push({});
-    } catch { /* ignore */ }
-  }, [!!roomId, isPremium]);
 
   const err = actionError ?? lastError;
 
@@ -388,14 +381,18 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
         </div>
 
         {!isPremium && (
-          <ins
-            className="adsbygoogle"
-            style={{ display: 'block', width: '100%' }}
-            data-ad-client="ca-pub-XXXXXXXXXX"
-            data-ad-slot="1111111111"
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
+          <div style={{
+            width: '100%', height: 90,
+            border: '2px dashed var(--border)',
+            borderRadius: 'var(--r-lg)',
+            background: 'var(--surface-2)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 4,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>Reklam</span>
+            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>Banner</span>
+          </div>
         )}
 
         {err && <p className="bp-error">{err}</p>}
