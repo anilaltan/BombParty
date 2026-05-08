@@ -159,6 +159,68 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
     );
   }
 
+  /* ── Quick join via shared link ── */
+  if (!roomId && initialRoomCode) {
+    return (
+      <div className="bp-lobby">
+        <div className="bp-brand" style={{ textAlign: 'center' }}>
+          <img src="/white-icon.png" alt="KelimeBombası" className="bp-brand-logo" />
+          <h1>Kelime<span>Bombası</span></h1>
+        </div>
+
+        <div className="bp-card">
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>
+              {t.roomCodeLabel}
+            </p>
+            <div className="bp-code-display">{initialRoomCode}</div>
+          </div>
+
+          <div className="bp-field">
+            <label>{t.nickname}</label>
+            <input
+              type="text"
+              className="bp-input"
+              placeholder={t.enterName}
+              value={nickname}
+              onChange={e => setNickname(e.target.value)}
+              maxLength={20}
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleJoin()}
+            />
+          </div>
+
+          <div className="bp-field">
+            <label>{t.avatar}</label>
+            <div className="bp-avatars">
+              {AVATAR_OPTIONS.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`bp-av-btn${avatarId === a.id ? ' picked' : ''}`}
+                  onClick={() => setAvatarId(a.id)}
+                  title={a.emoji}
+                >
+                  {a.emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="bp-btn-primary"
+            onClick={handleJoin}
+          >
+            {t.join}
+          </button>
+        </div>
+
+        {err && <p className="bp-error">{err}</p>}
+      </div>
+    );
+  }
+
   /* ── Pre-room: create or join ── */
   if (!roomId) {
     return (
