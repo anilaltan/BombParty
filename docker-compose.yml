@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       - PORT=3001
-      - CORS_ORIGIN=https://oyun.anilaltan.com
+      - CORS_ORIGIN=https://oyun.anilaltan.com,https://kelimebombasi.com,https://www.kelimebombasi.com
     ports:
       - "3001:3001"
 
