@@ -1,51 +1,83 @@
-# BombParty (Word Bomb)
+# BombParty
 
-Real-time multiplayer browser game: type Turkish words containing the given syllable before the bomb explodes. No sign-up, instant play.
+> Real-time multiplayer word game — type a valid Turkish word containing the given syllable before the bomb explodes.
 
-## What it is
+[![CI](https://github.com/anilaltan/BombParty/actions/workflows/ci.yml/badge.svg)](https://github.com/anilaltan/BombParty/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-brightgreen)](https://nodejs.org)
 
-- **Syllable rounds**: Each turn you get a random syllable (e.g. "KA", "ŞAR"); you must type a valid Turkish word that contains it.
-- **Timer**: A countdown runs per turn; submit a valid word in time or lose a life.
-- **Rooms**: Create or join rooms, play with friends or random players.
-- **Turkish-first**: Full support for İ, Ş, Ğ, Ü, Ö, Ç and a Turkish dictionary.
+No sign-up required. Share a room code and play instantly in any browser.
+
+---
+
+## How it works
+
+1. A host creates a room and shares the 6-character code.
+2. Each turn, a random syllable appears (e.g. **KA**, **ŞAR**).
+3. The active player must type a valid Turkish word containing that syllable before time runs out.
+4. Fail → lose a life. Lose all lives → eliminated. Last player standing wins.
+
+**Bonus:** Use all 29 letters of the Turkish alphabet across your submissions to earn an extra life.
+
+---
+
+## Features
+
+- Real-time multiplayer via WebSockets (Socket.io)
+- Server-authoritative timer with grace period
+- Full Turkish alphabet support (İ, Ş, Ğ, Ü, Ö, Ç, ı…)
+- Turkish dictionary with syllable-based word pool
+- Live word attempt preview (see what others are typing)
+- In-game chat
+- Searchable dictionary browser
+- Configurable turn duration and lives
+- No accounts, no install — runs in any modern browser
+
+---
 
 ## Tech stack
 
-| Layer    | Stack |
-|----------|--------|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Socket.io-client |
-| Backend  | Node.js, Express, Socket.io |
-| Data     | Turkish dictionary (syllable-based), profanity filter |
+| Layer     | Technology                                    |
+|-----------|-----------------------------------------------|
+| Frontend  | React 19, TypeScript, Vite, Tailwind CSS 4    |
+| Backend   | Node.js 18+, Express, Socket.io               |
+| Real-time | Socket.io (WebSocket + polling fallback)      |
+| Data      | Turkish dictionary JSON, syllable pool        |
+| Deploy    | Docker Compose (included)                     |
+
+---
 
 ## Project structure
 
 ```
 BombParty/
-├── backend/          # Game server, validation, timer, dictionary
+├── backend/
 │   ├── src/
-│   │   ├── dictionary/   # Loader, syllables, word validation
-│   │   ├── socketManager.js
-│   │   ├── timer/
-│   │   └── validation/
-│   ├── data/         # dictionary.json, profanity list
-│   └── scripts/      # fetch-kelimetre, kelime-botu
-├── frontend/         # React + Vite SPA
-│   └── src/
-│       ├── components/
-│       ├── context/  # SocketContext
-│       └── lib/     # socket, avatars, types
-├── .env.example
-└── README.md
+│   │   ├── dictionary/        # Loader, syllable pool, normalization
+│   │   ├── validation/        # Word validation pipeline
+│   │   ├── timer/             # Server-side turn timer
+│   │   ├── profanity/         # Nickname/chat filter
+│   │   └── socketManager.js   # All game logic and room state
+│   ├── data/                  # dictionary.json, profanity list
+│   └── scripts/               # Dictionary build utilities
+└── frontend/
+    └── src/
+        ├── components/        # UI components
+        ├── context/           # SocketContext, SettingsContext, I18nContext
+        ├── lib/               # Socket constants, avatar data
+        └── types/             # TypeScript game types
 ```
 
-## Prerequisites
+---
+
+## Getting started
+
+### Prerequisites
 
 - Node.js 18+
-- (Optional) Docker Compose for running backend in a container
+- npm 9+
 
-## Setup
-
-### 1. Clone and install
+### 1. Clone
 
 ```bash
 git clone https://github.com/anilaltan/BombParty.git
@@ -56,43 +88,56 @@ cd BombParty
 
 ```bash
 cd backend
-cp .env.example .env   # edit if needed
 npm install
-npm run build-dictionary   # build syllable index from dictionary
-npm start                  # default port 3000
+npm start          # starts on port 3001
 ```
+
+Environment variables (all optional):
+
+| Variable           | Default | Description                   |
+|--------------------|---------|-------------------------------|
+| `PORT`             | `3001`  | HTTP/WebSocket port           |
+| `CORS_ORIGIN`      | `*`     | Allowed frontend origin       |
+| `TURN_DURATION_MS` | `15000` | Default turn duration (ms)    |
+| `GRACE_MS`         | `200`   | Late-submission grace window  |
 
 ### 3. Frontend
 
 ```bash
 cd frontend
-cp .env.example .env   # set VITE_SOCKET_URL if backend is not localhost:3000
 npm install
-npm run dev
+npm run dev        # starts on port 3000, proxies /api to :3001
 ```
 
-Open the URL shown by Vite (e.g. http://localhost:5173).
+Open [http://localhost:3000](http://localhost:3000).
 
-### Env (summary)
+### Docker Compose (full stack)
 
-- **Backend**: optional `PORT`, other config as in `.env.example`.
-- **Frontend**: `VITE_SOCKET_URL` — Socket.io server URL (default assumes same host, different port).
+```bash
+docker-compose up --build
+```
+
+---
 
 ## Scripts
 
-| Where     | Command | Description |
-|----------|---------|-------------|
-| Backend  | `npm start` | Start game server |
-| Backend  | `npm run build-dictionary` | Rebuild dictionary/syllables |
-| Backend  | `npm run fetch-kelimetre` | Fetch words from Kelimetre |
-| Backend  | `npm test` | Run backend tests |
-| Frontend | `npm run dev` | Vite dev server |
-| Frontend | `npm run build` | Production build |
+| Directory | Command                      | Description                        |
+|-----------|------------------------------|------------------------------------|
+| backend   | `npm start`                  | Start game server                  |
+| backend   | `npm test`                   | Run backend tests                  |
+| backend   | `npm run build-dictionary`   | Rebuild dictionary/syllable index  |
+| frontend  | `npm run dev`                | Vite dev server                    |
+| frontend  | `npm run build`              | Production build → `dist/`         |
+| frontend  | `npm run lint`               | ESLint                             |
 
-## Cursor / MCP
+---
 
-If you use Cursor with MCP, copy `.cursor/mcp.example.json` to `.cursor/mcp.json` and fill in your API keys. `mcp.json` is gitignored.
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
 
 ## License
 
-MIT.
+[MIT](LICENSE)
