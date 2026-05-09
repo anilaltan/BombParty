@@ -32,7 +32,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
   const [copied, setCopied]         = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const isPremium = localStorage.getItem('bombparty-premium') === 'true';
+
   const me      = players.find(p => p.socketId === socket?.id);
   const isReady = me?.ready ?? false;
   const isHost  = me?.isHost ?? false;

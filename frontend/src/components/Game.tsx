@@ -113,7 +113,7 @@ export function Game() {
   const playDing = useCallback(() => playTone(880, 0.15, 0.15), [playTone]);
   const playTick = useCallback(() => playTone(1200, 0.05, 0.08), [playTone]);
 
-  const isPremium = localStorage.getItem('bombparty-premium') === 'true';
+
   const isMyTurn = gameState?.status === 'playing' && gameState.currentPlayerId === socket?.id;
 
   // Broadcast live attempt

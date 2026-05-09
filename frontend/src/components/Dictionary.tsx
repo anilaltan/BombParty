@@ -68,7 +68,7 @@ function PageControls({
 
 export function Dictionary({ onBack }: Props) {
   const { t } = useI18n();
-  const isPremium = localStorage.getItem('bombparty-premium') === 'true';
+
   const [allWords, setAllWords]         = useState<string[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
