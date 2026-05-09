@@ -54,7 +54,7 @@ app.get('/api/dictionary', dictLimiter, (req, res) => {
   try {
     const words = getWordList();
     const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(5000, Math.max(1, Number(req.query.limit) || API_PAGE_SIZE));
+    const limit = Math.min(100000, Math.max(1, Number(req.query.limit) || API_PAGE_SIZE));
     const start = (page - 1) * limit;
     const slice = words.slice(start, start + limit);
     res.set('Cache-Control', 'public, max-age=86400, immutable');
