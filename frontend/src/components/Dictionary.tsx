@@ -82,7 +82,9 @@ export function Dictionary({ onBack }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/dictionary?page=1&limit=200000');
+      const meta = await fetch('/api/dictionary/meta').then(r => r.json()).catch(() => ({ total: 0 }));
+      const v = meta.total || Date.now();
+      const res = await fetch(`/api/dictionary?page=1&limit=200000&v=${v}`);
       if (!res.ok) throw new Error('Failed to load dictionary');
       const ct = res.headers.get('content-type') ?? '';
       if (!ct.includes('application/json')) throw new Error('API returned non-JSON. Check backend/proxy config.');

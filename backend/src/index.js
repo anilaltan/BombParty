@@ -50,6 +50,11 @@ app.get('/api/rooms', (req, res) => {
   res.json({ rooms: getPublicRooms() });
 });
 
+app.get('/api/dictionary/meta', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ total: size() });
+});
+
 app.get('/api/dictionary', dictLimiter, (req, res) => {
   try {
     const words = getWordList();
@@ -57,7 +62,7 @@ app.get('/api/dictionary', dictLimiter, (req, res) => {
     const limit = Math.min(100000, Math.max(1, Number(req.query.limit) || API_PAGE_SIZE));
     const start = (page - 1) * limit;
     const slice = words.slice(start, start + limit);
-    res.set('Cache-Control', 'public, max-age=86400, immutable');
+    res.set('Cache-Control', 'public, max-age=86400, must-revalidate');
     res.json({ words: slice, total: words.length });
   } catch (e) {
     res.status(500).json({ error: 'Sözlük yüklenmedi' });
