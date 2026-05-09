@@ -3,6 +3,7 @@ import { useSocket } from '../context/SocketContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
 import { trackEvent } from '../lib/gtag';
+import { AdBanner } from './AdBanner';
 import { AVATAR_OPTIONS, getAvatarEmoji } from '../lib/avatars';
 import type { Player } from '../types/game';
 
@@ -445,20 +446,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
           </button>
         </div>
 
-        {!isPremium && (
-          <div style={{
-            width: '100%', height: 90,
-            border: '2px dashed var(--border)',
-            borderRadius: 'var(--r-lg)',
-            background: 'var(--surface-2)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: 4,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>Reklam</span>
-            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>Banner</span>
-          </div>
-        )}
+        <AdBanner slot="LOBBY_SLOT_ID" format="banner" />
 
         {err && <p className="bp-error">{err}</p>}
       </div>

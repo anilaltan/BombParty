@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { AdBanner } from './AdBanner';
 import { useI18n } from '../context/I18nContext';
 
 const PAGE_SIZE = 2000;
@@ -229,22 +230,9 @@ export function Dictionary({ onBack }: Props) {
 
       {error && <p className="bp-error" style={{ margin: '0 24px' }}>{error}</p>}
 
-      {!isPremium && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
-          <div style={{
-            width: 300, height: 250,
-            border: '2px dashed var(--border)',
-            borderRadius: 'var(--r-lg)',
-            background: 'var(--surface-2)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: 6,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-3)' }}>Reklam</span>
-            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>300 × 250</span>
-          </div>
-        </div>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+        <AdBanner slot="DICT_SLOT_ID" format="rectangle" />
+      </div>
 
       {/* ── Word grid ── */}
       <div className="bp-dict-body bp-scroll" ref={bodyRef}>
