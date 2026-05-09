@@ -25,6 +25,7 @@ export function Landing({ onPlay, onDictionary, onPrivacy, onTerms }: Props) {
 
   return (
     <div className="lp-root">
+      <h1 className="sr-only">KelimeBombası - Ücretsiz Çok Oyunculu Kelime Oyunu</h1>
 
       {/* Nav */}
       <nav className="lp-nav">
