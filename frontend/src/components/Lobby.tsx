@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
+import { trackEvent } from '../lib/gtag';
 import { AVATAR_OPTIONS, getAvatarEmoji } from '../lib/avatars';
 import type { Player } from '../types/game';
 
@@ -76,6 +77,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
         clearTimeout(timeout);
         setCreating(false);
         if (res && !res.ok) setActionError(res.error ?? t.failedCreate);
+        else trackEvent('room_created');
       },
     );
   };
@@ -90,6 +92,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
     socket?.emit(EVENTS.JOIN_ROOM, { roomId: code, nickname: name, avatarId },
       (res: { ok?: boolean; error?: string }) => {
         if (res && !res.ok) setActionError(res.error ?? t.failedJoin);
+        else trackEvent('room_joined');
       });
   };
 

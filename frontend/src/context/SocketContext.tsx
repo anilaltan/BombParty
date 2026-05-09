@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createSocket, EVENTS } from '../lib/socket';
+import { trackEvent } from '../lib/gtag';
 import type { Socket } from 'socket.io-client';
 import type { GameState, Player, WordResult, GameEndPayload } from '../types/game';
 
@@ -70,7 +71,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     s.on(EVENTS.PLAYER_LIST, (list: Player[]) => setPlayers(list));
 
     s.on(EVENTS.GAME_STATE, (payload: GameState) => {
-      setGameState(payload);
+      setGameState((prev) => {
+        if (payload?.status === 'playing' && prev?.status !== 'playing') {
+          trackEvent('game_started', { player_count: payload.players?.length ?? 0 });
+        }
+        return payload;
+      });
       setLiveAttempt((prev) => {
         if (!payload?.currentPlayerId) return null;
         const word = payload.currentAttempt ?? '';
@@ -98,6 +104,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     });
 
     s.on(EVENTS.GAME_END, (payload: GameEndPayload) => {
+      trackEvent('game_ended', { player_count: payload.players?.length ?? 0 });
       setGameEnd(payload);
       setLiveAttempt(null);
       setGameState((prev) => (prev ? { ...prev, status: 'waiting' } : null));
