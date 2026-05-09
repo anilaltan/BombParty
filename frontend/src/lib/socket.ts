@@ -21,7 +21,9 @@ export const EVENTS = {
 const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ??
   (typeof window !== 'undefined'
-    ? `http://${window.location.hostname}:3001`
+    ? window.location.hostname === 'localhost'
+      ? 'http://localhost:3001'
+      : window.location.origin
     : 'http://localhost:3001');
 
 export function createSocket(): Socket {
