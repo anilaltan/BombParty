@@ -15,25 +15,25 @@ describe('validateWord', () => {
   it('returns invalid when word does not contain syllable', () => {
     const r = validateWord('kalem', 'ba', new Set(), { has });
     assert.strictEqual(r.valid, false);
-    assert.strictEqual(r.reason, 'Word must contain the syllable');
+    assert.strictEqual(r.reason, 'Kelime heceyi içermelidir');
   });
 
   it('returns invalid when word not in dictionary', () => {
     const r = validateWord('xyznonexistent', 'xy', new Set(), { has });
     assert.strictEqual(r.valid, false);
-    assert.strictEqual(r.reason, 'Word not in dictionary');
+    assert.strictEqual(r.reason, 'Kelime sözlükte yok');
   });
 
   it('returns invalid when word already used this round', () => {
     const r = validateWord('kalem', 'ka', new Set(['kalem']), { has });
     assert.strictEqual(r.valid, false);
-    assert.strictEqual(r.reason, 'Word already used this round');
+    assert.strictEqual(r.reason, 'Bu turda kelime zaten kullanıldı');
   });
 
   it('returns invalid for empty word', () => {
     const r = validateWord('', 'ka', new Set(), { has });
     assert.strictEqual(r.valid, false);
-    assert.strictEqual(r.reason, 'Word required');
+    assert.strictEqual(r.reason, 'Kelime gerekli');
   });
 
   it('normalizes Turkish and checks syllable', () => {
@@ -47,19 +47,19 @@ describe('validateWord', () => {
     assert.strictEqual(r.reason, undefined);
   });
 
-  it('returns Validation unavailable when has is not provided', () => {
+  it('returns Doğrulama kullanılamıyor when has is not provided', () => {
     const r = validateWord('kalem', 'ka', new Set(), {});
     assert.strictEqual(r.valid, false);
-    assert.strictEqual(r.reason, 'Validation unavailable');
+    assert.strictEqual(r.reason, 'Doğrulama kullanılamıyor');
   });
 
-  it('returns Validation unavailable when has throws', () => {
+  it('returns Doğrulama kullanılamıyor when has throws', () => {
     const r = validateWord('kalem', 'ka', new Set(), {
       has: () => {
         throw new Error('Dict error');
       },
     });
     assert.strictEqual(r.valid, false);
-    assert.strictEqual(r.reason, 'Validation unavailable');
+    assert.strictEqual(r.reason, 'Doğrulama kullanılamıyor');
   });
 });

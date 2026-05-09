@@ -15,7 +15,7 @@
     "fetch-kelimetre": "node scripts/fetch-kelimetre.js",
     "sozluk-olustur": "node scripts/kelime-botu.js",
     "test": "node --test",
-    "test:socket": "node src/test-socket-client.js"
+    "test:socket": "node src/socket-client-manual.js"
   },
   "devDependencies": {
     "socket.io-client": "^4.8.0"
