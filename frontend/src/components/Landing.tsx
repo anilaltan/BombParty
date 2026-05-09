@@ -3,9 +3,11 @@ import { useI18n } from '../context/I18nContext';
 interface Props {
   onPlay: () => void;
   onDictionary: () => void;
+  onPrivacy: () => void;
+  onTerms: () => void;
 }
 
-export function Landing({ onPlay, onDictionary }: Props) {
+export function Landing({ onPlay, onDictionary, onPrivacy, onTerms }: Props) {
   const { t } = useI18n();
 
   const steps = [
@@ -108,6 +110,8 @@ export function Landing({ onPlay, onDictionary }: Props) {
         <p className="lp-footer-tagline">{t.landingFooterTag}</p>
         <div className="lp-footer-links">
           <button className="lp-footer-link" onClick={onDictionary}>{t.landingDictBtn}</button>
+          <button className="lp-footer-link" onClick={onPrivacy}>Gizlilik Politikası</button>
+          <button className="lp-footer-link" onClick={onTerms}>Kullanım Koşulları</button>
         </div>
       </footer>
 

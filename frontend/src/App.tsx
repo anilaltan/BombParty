@@ -7,8 +7,11 @@ import { Lobby } from './components/Lobby';
 import { Game } from './components/Game';
 import { Dictionary } from './components/Dictionary';
 import { Settings } from './components/Settings';
+import { Privacy } from './components/Privacy';
+import { Terms } from './components/Terms';
+import { CookieBanner } from './components/CookieBanner';
 
-type View = 'landing' | 'main' | 'dictionary' | 'settings';
+type View = 'landing' | 'main' | 'dictionary' | 'settings' | 'privacy' | 'terms';
 
 function AppContent() {
   const { gameState, gameEnd } = useSocket();
@@ -41,12 +44,23 @@ function AppContent() {
   const inGame = gameState?.status === 'playing';
   const showGame = inGame || !!gameEnd;
 
+  if (view === 'privacy') {
+    return <Privacy onBack={() => setView('landing')} onTerms={() => setView('terms')} />;
+  }
+  if (view === 'terms') {
+    return <Terms onBack={() => setView('landing')} onPrivacy={() => setView('privacy')} />;
+  }
   if (view === 'landing') {
     return (
-      <Landing
-        onPlay={() => setView('main')}
-        onDictionary={() => setView('dictionary')}
-      />
+      <>
+        <Landing
+          onPlay={() => setView('main')}
+          onDictionary={() => setView('dictionary')}
+          onPrivacy={() => setView('privacy')}
+          onTerms={() => setView('terms')}
+        />
+        <CookieBanner onPrivacy={() => setView('privacy')} />
+      </>
     );
   }
   if (view === 'dictionary') {
