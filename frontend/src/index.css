@@ -55,7 +55,10 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-body:has(.legal-root) { overflow: auto; }
+body:has(.legal-root),
+body:has(.bp-lobby),
+body:has(.bp-room-view),
+body:has(.bp-end) { overflow: auto; }
 
 /* ─── Keyframes ─────────────────────────────────────────────── */
 @keyframes shake {
@@ -784,6 +787,7 @@ body:has(.legal-root) { overflow: auto; }
   justify-content: center;
   padding: 24px 16px;
   gap: 20px;
+  overflow-y: auto;
 }
 
 .bp-code-display {
@@ -844,6 +848,7 @@ body:has(.legal-root) { overflow: auto; }
   padding: 32px 16px;
   gap: 24px;
   animation: slide-up 0.4s ease-out;
+  overflow-y: auto;
 }
 
 .bp-end-score-row {
