@@ -233,7 +233,7 @@ export function Dictionary({ onBack }: Props) {
       {error && <p className="bp-error" style={{ margin: '0 24px' }}>{error}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
-        <AdBanner slot="DICT_SLOT_ID" format="rectangle" />
+        <AdBanner slot="3407258540" format="rectangle" />
       </div>
 
       {/* ── Word grid ── */}

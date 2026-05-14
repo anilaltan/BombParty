@@ -305,7 +305,7 @@ export function Game() {
           ))}
         </div>
 
-        <AdBanner slot="GAMEEND_SLOT_ID" format="rectangle" />
+        <AdBanner slot="5298924717" format="rectangle" />
 
         <button type="button" className="bp-btn-secondary" style={{ minWidth: 180 }} onClick={clearGameEnd}>
           {t.backToLobby}

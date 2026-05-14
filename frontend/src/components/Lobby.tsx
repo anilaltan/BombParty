@@ -446,7 +446,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
           </button>
         </div>
 
-        <AdBanner slot="LOBBY_SLOT_ID" format="banner" />
+        <AdBanner slot="2229908248" format="banner" />
 
         {err && <p className="bp-error">{err}</p>}
       </div>
