@@ -4,7 +4,8 @@ import { useSettings } from '../context/SettingsContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
 import { AdBanner } from './AdBanner';
-import { getAvatarEmoji } from '../lib/avatars';
+import { getAvatarPreset } from '../lib/avatars';
+import { IllustratedAvatar } from './IllustratedAvatar';
 import type { Player, ChatMessage } from '../types/game';
 
 const DEFAULT_TURN_DURATION_MS = 15000;
@@ -20,6 +21,7 @@ interface PlayerCardProps {
 }
 
 const PlayerCard = memo(function PlayerCard({ p, pos, active, liveWord, myWords }: PlayerCardProps) {
+  const preset = getAvatarPreset(p.avatarId);
   return (
     <div
       className={`bp-player${p.isEliminated ? ' eliminated' : ''}`}
@@ -27,7 +29,7 @@ const PlayerCard = memo(function PlayerCard({ p, pos, active, liveWord, myWords 
     >
       <span className="bp-player-name">{p.nickname?.trim() ?? p.socketId.slice(0, 10)}</span>
       <div className={`bp-avatar-card${active ? ' active' : ''}`}>
-        {getAvatarEmoji(p.avatarId)}
+        <IllustratedAvatar seed={preset.seed} bgColor={preset.bgColor} size={54} />
         {active && <div className="bp-active-ring" />}
       </div>
       <div className="bp-hearts">
@@ -295,7 +297,7 @@ export function Game() {
             <div key={p.socketId ?? i} className={`bp-end-score-row${p.socketId === gameEnd.winner ? ' winner-row' : ''}`}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: 'var(--text-3)', fontSize: 12, width: 18 }}>#{i + 1}</span>
-                <span style={{ fontSize: 18 }}>{getAvatarEmoji(p.avatarId)}</span>
+                {(() => { const pr = getAvatarPreset(p.avatarId); return <IllustratedAvatar seed={pr.seed} bgColor={pr.bgColor} size={24} />; })()}
                 <span style={{ fontWeight: 700, color: p.socketId === gameEnd.winner ? 'var(--yellow)' : 'var(--text)', fontSize: 13 }}>
                   {p.nickname?.trim() || p.socketId?.slice(0, 8) || '—'}
                 </span>

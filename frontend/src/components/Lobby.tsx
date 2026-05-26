@@ -4,7 +4,8 @@ import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
 import { trackEvent } from '../lib/gtag';
 import { AdBanner } from './AdBanner';
-import { AVATAR_OPTIONS, getAvatarEmoji } from '../lib/avatars';
+import { AVATAR_PRESETS, getAvatarPreset } from '../lib/avatars';
+import { IllustratedAvatar } from './IllustratedAvatar';
 import type { Player } from '../types/game';
 
 type LobbyProps = {
@@ -197,15 +198,14 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
           <div className="bp-field">
             <label>{t.avatar}</label>
             <div className="bp-avatars">
-              {AVATAR_OPTIONS.map(a => (
+              {AVATAR_PRESETS.map(a => (
                 <button
                   key={a.id}
                   type="button"
                   className={`bp-av-btn${avatarId === a.id ? ' picked' : ''}`}
                   onClick={() => setAvatarId(a.id)}
-                  title={a.emoji}
                 >
-                  {a.emoji}
+                  <IllustratedAvatar seed={a.seed} bgColor={a.bgColor} size={30} />
                 </button>
               ))}
             </div>
@@ -258,15 +258,14 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
           <div className="bp-field">
             <label>{t.avatar}</label>
             <div className="bp-avatars">
-              {AVATAR_OPTIONS.map(a => (
+              {AVATAR_PRESETS.map(a => (
                 <button
                   key={a.id}
                   type="button"
                   className={`bp-av-btn${avatarId === a.id ? ' picked' : ''}`}
                   onClick={() => setAvatarId(a.id)}
-                  title={a.emoji}
                 >
-                  {a.emoji}
+                  <IllustratedAvatar seed={a.seed} bgColor={a.bgColor} size={30} />
                 </button>
               ))}
             </div>
@@ -491,7 +490,7 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
         {players.map((p: Player) => (
           <div key={p.socketId} className="bp-player-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 24 }}>{getAvatarEmoji(p.avatarId)}</span>
+              {(() => { const preset = getAvatarPreset(p.avatarId); return <IllustratedAvatar seed={preset.seed} bgColor={preset.bgColor} size={32} />; })()}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
                   {p.nickname || p.socketId.slice(0, 8)}
