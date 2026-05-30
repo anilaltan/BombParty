@@ -3,7 +3,6 @@ import { useSocket } from '../context/SocketContext';
 import { useSettings } from '../context/SettingsContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
-import { AdBanner } from './AdBanner';
 import { getAvatarPreset } from '../lib/avatars';
 import { IllustratedAvatar } from './IllustratedAvatar';
 import type { Player, ChatMessage } from '../types/game';
@@ -306,8 +305,6 @@ export function Game() {
             </div>
           ))}
         </div>
-
-        <AdBanner slot="5298924717" format="rectangle" />
 
         <button type="button" className="bp-btn-secondary" style={{ minWidth: 180 }} onClick={clearGameEnd}>
           {t.backToLobby}

@@ -1,4 +1,5 @@
 import { useI18n } from '../context/I18nContext';
+import { AdBanner } from './AdBanner';
 
 interface Props {
   onPlay: () => void;
@@ -92,6 +93,10 @@ export function Landing({ onPlay, onDictionary, onPrivacy, onTerms }: Props) {
           ))}
         </div>
       </section>
+
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '0 16px' }}>
+        <AdBanner slot="2229908248" format="banner" />
+      </div>
 
       {/* Final CTA */}
       <section className="lp-final-cta">

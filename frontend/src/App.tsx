@@ -9,9 +9,10 @@ import { Dictionary } from './components/Dictionary';
 import { Settings } from './components/Settings';
 import { Privacy } from './components/Privacy';
 import { Terms } from './components/Terms';
+import { HowToPlay } from './components/HowToPlay';
 import { CookieBanner } from './components/CookieBanner';
 
-type View = 'landing' | 'main' | 'dictionary' | 'settings' | 'privacy' | 'terms';
+type View = 'landing' | 'main' | 'dictionary' | 'settings' | 'privacy' | 'terms' | 'howtoplay';
 
 function AppContent() {
   const { gameState, gameEnd } = useSocket();
@@ -69,12 +70,16 @@ function AppContent() {
   if (view === 'settings') {
     return <Settings onBack={() => setView('main')} />;
   }
+  if (view === 'howtoplay') {
+    return <HowToPlay onBack={() => setView('main')} />;
+  }
   return showGame ? (
     <Game />
   ) : (
     <Lobby
       onOpenDictionary={() => setView('dictionary')}
       onOpenSettings={() => setView('settings')}
+      onOpenHowToPlay={() => setView('howtoplay')}
       initialRoomCode={initialRoomCode}
     />
   );

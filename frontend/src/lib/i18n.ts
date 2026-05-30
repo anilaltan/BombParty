@@ -111,6 +111,7 @@ export type Translations = {
   copyCode: string;
   copied: string;
   shareLink: string;
+  howToPlay: string;
 };
 
 export const translations: Record<Lang, Translations> = {
@@ -225,6 +226,7 @@ export const translations: Record<Lang, Translations> = {
     copyCode: 'Copy Code',
     copied: 'Copied!',
     shareLink: 'Share Link',
+    howToPlay: '❓ How to Play',
   },
   tr: {
     connecting: 'Bağlanıyor…',
@@ -337,5 +339,6 @@ export const translations: Record<Lang, Translations> = {
     copyCode: 'Kodu Kopyala',
     copied: 'Kopyalandı!',
     shareLink: 'Linki Paylaş',
+    howToPlay: '❓ Nasıl Oynanır',
   },
 };

@@ -3,7 +3,6 @@ import { useSocket } from '../context/SocketContext';
 import { useI18n } from '../context/I18nContext';
 import { EVENTS } from '../lib/socket';
 import { trackEvent } from '../lib/gtag';
-import { AdBanner } from './AdBanner';
 import { AVATAR_PRESETS, getAvatarPreset } from '../lib/avatars';
 import { IllustratedAvatar } from './IllustratedAvatar';
 import type { Player } from '../types/game';
@@ -11,10 +10,11 @@ import type { Player } from '../types/game';
 type LobbyProps = {
   onOpenDictionary?: () => void;
   onOpenSettings?: () => void;
+  onOpenHowToPlay?: () => void;
   initialRoomCode?: string;
 };
 
-export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: LobbyProps) {
+export function Lobby({ onOpenDictionary, onOpenSettings, onOpenHowToPlay, initialRoomCode }: LobbyProps) {
   const { socket, connected, roomId, players, gameState, lastError, clearLastError, leaveRoom } = useSocket();
   const { t, lang, setLang } = useI18n();
   const [nickname, setNickname]     = useState('');
@@ -435,6 +435,11 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
               {t.dictionary}
             </button>
           )}
+          {onOpenHowToPlay && (
+            <button type="button" className="bp-btn-secondary" onClick={onOpenHowToPlay}>
+              {t.howToPlay}
+            </button>
+          )}
           <button
             type="button"
             className="bp-btn-secondary"
@@ -444,8 +449,6 @@ export function Lobby({ onOpenDictionary, onOpenSettings, initialRoomCode }: Lob
             🌐 {lang === 'tr' ? 'EN' : 'TR'}
           </button>
         </div>
-
-        <AdBanner slot="2229908248" format="banner" />
 
         {err && <p className="bp-error">{err}</p>}
       </div>
